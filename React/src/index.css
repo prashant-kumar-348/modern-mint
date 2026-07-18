@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  --color-neon-mint: #55ffb0;
+  --color-gold: #d4af37;
+  --color-mint-bg: #0a1914;
+  --color-mint-border: #1c4d3d;
+  --color-mint-text: #a4d8c2;
+}
+
+:root {
+  font-family: 'Outfit', sans-serif;
+  background-color: #030806;
+  color: #a4d8c2;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #030806;
+}
+
+/* Custom premium class for glass panels */
+.glass-panel {
+  background: rgba(10, 25, 20, 0.85);
+  border: 1px solid #1c4d3d;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(85, 255, 176, 0.1);
+}
+
+.glass-panel-gold {
+  background: rgba(10, 25, 20, 0.9);
+  border: 1px solid #d4af37;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.15), inset 0 0 15px rgba(212, 175, 55, 0.05);
+}
+
+.glass-panel-neon {
+  background: rgba(10, 25, 20, 0.9);
+  border: 1px solid #55ffb0;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 0 25px rgba(85, 255, 176, 0.15), inset 0 0 15px rgba(85, 255, 176, 0.05);
+}
+
+.glass-panel-red {
+  background: rgba(26, 10, 15, 0.9);
+  border: 1px solid #ff5577;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 0 25px rgba(255, 85, 119, 0.2), inset 0 0 15px rgba(255, 85, 119, 0.05);
+}
+
+/* Animations for active state/glow effects */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 0.6;
+    box-shadow: 0 0 10px rgba(85, 255, 176, 0.2);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(85, 255, 176, 0.4);
+  }
+}
+
+.pulse-glow-border {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+/* Custom input styling for Deal Sheet Modal */
+.deal-input {
+  background: transparent;
+  border-bottom: 2px solid #000;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 1.1rem;
+  padding: 2px 8px;
+  outline: none;
+  width: 100%;
+  transition: border-bottom-color 0.2s ease;
+}
+
+.deal-input:focus {
+  border-bottom-color: #55ffb0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 25, 20, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1c4d3d;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #55ffb0;
+}

@@ -1,0 +1,42 @@
+const mentorCards = [
+  { "id": 1, "name": "INDUSTRY TITAN MENTOR", "type": "PLAY NOW", "description": "A business giant steps in. Choose 1 company and advance it 1 stage (Launch, Grow, Scale, etc). Costs nothing this time!", "effectType": "free_stage_up" },
+  { "id": 2, "name": "STAR POWER", "type": "PLAY NOW", "description": "A celebrity shout-out boosts sales. After the dice roll, add +1 to your company's multiplier this round.", "effectType": "add_multiplier" },
+  { "id": 3, "name": "CLIENT MENTOR MAGIC", "type": "PLAY NOW", "description": "Mentor turns into a paying client. Advance 1 company up 1 stage for free OR immediately gain 10k.", "effectType": "free_stage_or_cash" },
+  { "id": 4, "name": "STRATEGIC MASTERMIND", "type": "PLAY ANYTIME", "description": "Smart advice cuts your PR cost. Choose 1 company. You pay no PR cost for that company this round.", "effectType": "free_pr" },
+  { "id": 5, "name": "HR GENIUS", "type": "PLAY ANYTIME", "description": "Hiring tips save on upgrades. No workforce upgrade cost for 1 of your companies this round.", "effectType": "free_workforce" },
+  { "id": 6, "name": "BREAKING NEWS", "type": "PLAY NOW", "description": "Media boosts your sales. After the dice roll, add +2 to the multiplier of 1 company you own this round.", "effectType": "add_multiplier_2" },
+  { "id": 7, "name": "GUARDIAN MENTOR", "type": "PLAY NOW", "description": "Shield from setbacks. Ignore the next Event Card that affects your companies (keep it face down and discard).", "effectType": "shield_event" },
+  { "id": 8, "name": "EVENT INSIGHT", "type": "PLAY NOW", "description": "See what's coming next. Look at the next 2 Event cards, then put them back in any order.", "effectType": "peek_events" },
+  { "id": 9, "name": "NETWORK GURU", "type": "PLAY ANYTIME", "description": "Advice broadens your reach. Draw 2 more Mentor cards and keep them.", "effectType": "draw_two_cards" },
+  { "id": 10, "name": "BOLD MOVES", "type": "PLAY ANYTIME", "description": "A risky bet pays off (or costs you!). Play before you roll. If you roll 5 or 6, double your revenue. If you roll 1 or 2, halve your revenue.", "effectType": "risk_multiplier" },
+  { "id": 11, "name": "VISIONARY MENTOR", "type": "PLAY ANYTIME", "description": "Jump straight to the Retain stage. Start a new company at Retain stage by paying its Retain stage amount.", "effectType": "quick_launch_retain" },
+  { "id": 12, "name": "BANK TIES", "type": "PLAY NOW", "description": "Bigger credit, same rate. Borrow an extra $50K from the bank at the 10% interest rate.", "effectType": "extra_loan" },
+  { "id": 13, "name": "GENIUS MENTOR", "type": "PLAY NOW", "description": "Double your decision power. Take 2 extra actions this round (can launch, stage up, etc).", "effectType": "extra_actions" },
+  { "id": 14, "name": "STRATEGIC MENTOR", "type": "PLAY ANYTIME", "description": "Bypass the bad dice roll. Play after the dice roll. Change your roll to a 6 for this round.", "effectType": "force_dice_6" },
+  { "id": 15, "name": "CRAFTY MENTOR", "type": "PLAY NOW", "description": "Take a cut from everyone. Collect $5K from every other player (continue if they have $0).", "effectType": "steal_cash" },
+  { "id": 16, "name": "VENDOR POWER", "type": "PLAY ANYTIME", "description": "Efficiency saves resources. Advance 1 company to the next stage for half the investment cost.", "effectType": "half_cost_stage_up" },
+  { "id": 17, "name": "GOLDEN TOUCH MENTOR", "type": "PLAY NOW", "description": "Golden profits await. After the dice roll, double 1 company's revenue.", "effectType": "double_revenue" },
+  { "id": 18, "name": "MENTOR'S CHARM", "type": "PLAY ANYTIME", "description": "Expectation cost drops. Pay 50% for all stage upgrades for 1 of your companies this round.", "effectType": "half_cost_all_stages" },
+  { "id": 19, "name": "TECH MENTOR", "type": "PLAY ANYTIME", "description": "Tech innovation boosts earnings. After the dice roll, double the revenue of 1 of your companies for this round by $50K.", "effectType": "tech_revenue_boost" },
+  { "id": 20, "name": "RISK-TAKER MENTOR", "type": "PLAY ANYTIME", "description": "Take the mentor's setback. All players discard their Mentor cards. (Including you!).", "effectType": "discard_all_mentors" },
+  { "id": 21, "name": "BOARDROOM SHARK MENTOR", "type": "PLAY NOW", "description": "Silence your fiercest rival. Choose 1 player. They lose their next turn.", "effectType": "skip_rival_turn" },
+  { "id": 22, "name": "MENTOR'S TAX STRATEGY", "type": "PLAY ANYTIME", "description": "Smart tax tips cut your costs. Reduce all taxes/fees by 50% for 1 of your companies this round.", "effectType": "reduce_tax" },
+  { "id": 23, "name": "TECH UNICORN MENTOR", "type": "PLAY NOW", "description": "Unleash tech magic. Invest in 1 Tech company immediately (without spending an action).", "effectType": "free_tech_invest" },
+  { "id": 24, "name": "MENTOR'S CRYSTAL BALL", "type": "PLAY ANYTIME", "description": "Get a sneak peek. Look at the next Event card, then return it and adjust your strategy.", "effectType": "peek_event_1" },
+  { "id": 25, "name": "ALLIANCE ARCHITECT", "type": "PLAY NOW", "description": "Stronger together. Choose 1 player. Both of you draw 1 Mentor card.", "effectType": "mutual_draw" },
+  { "id": 26, "name": "DISRUPTOR MENTOR", "type": "PLAY NOW", "description": "Disrupt your rival's strategy. Choose 1 player. They lose 1/2 of their cash in hand.", "effectType": "halve_rival_cash" },
+  { "id": 27, "name": "SURE SHOT", "type": "PLAY ANYTIME", "description": "Lock in a perfect outcome. Roll a 6 on your dice roll as if you rolled a 6.", "effectType": "auto_roll_6" },
+  { "id": 28, "name": "BANK BACKED BOOST", "type": "PLAY NOW", "description": "Your bank stakes its reputation on you. After the dice roll, take cash equal to 20% of the game's total bank loans from the bank.", "effectType": "cash_from_total_loans" },
+  { "id": 29, "name": "SHARP MENTOR", "type": "PLAY NOW", "description": "Your insight pays off later. At the end of the game, increase the final valuation of 1 company by 20%.", "effectType": "end_game_valuation_boost" },
+  { "id": 30, "name": "LIQUIDITY EXPERT", "type": "PLAY ANYTIME", "description": "Quick cash when you need it. Play once during your turn. Choose 1 company and sell it to the bank for 50% of its valuation.", "effectType": "sell_company_half_price" },
+  { "id": 31, "name": "NO LOANS", "type": "PLAY NOW", "description": "Banks aren't lending today. You cannot take any loans this round.", "effectType": "block_loans" },
+  { "id": 32, "name": "MENTOR MISHAP", "type": "PLAY NOW", "description": "Bad advice drains cash. Lose 20K immediately.", "effectType": "lose_cash_20k" },
+  { "id": 33, "name": "TOXIC MENTOR", "type": "PLAY NOW", "description": "Poor guidance hurts morale. Choose 1 company. You cannot stage it up this round.", "effectType": "block_stage_up" },
+  { "id": 34, "name": "HOSTILE TAKEOVER", "type": "PLAY NOW", "description": "Rivals force you to sell. Other players take 1 of your companies and sell it. You receive half the current value.", "effectType": "forced_sale" },
+  { "id": 35, "name": "ANALYSIS PARALYSIS", "type": "PLAY NOW", "description": "Overthinking slows you down. You have 1 less action this round.", "effectType": "lose_action" },
+  { "id": 36, "name": "MINDSET BLOCK", "type": "PLAY NOW", "description": "Self-doubt slows you down. You miss your next turn.", "effectType": "miss_turn" }
+];
+
+module.exports = {
+  generateMentorDeck: () => [...mentorCards]
+};
