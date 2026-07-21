@@ -26,15 +26,15 @@ const io = new Server(server, {
 const rooms = {};
 
 const COMPANY_DATA_MAP = {
-  'CONTRACT FARMING': [[10,100,500,0], [100,200,1000,20], [1000,1000,25000,200], [2000,2000,70000,400]],
-  'AGRI IoT': [[100,10,1000,0], [500,200,6000,200], [1000,1000,18000,2000], [8000,8000,36000,7000]],
-  'WALLET': [[100,10,1000,0], [1000,400,2000,400], [1500,2000,36000,800], [2500,12000,98000,5000]],
-  'SNACKS': [[10,20,1000,0], [200,200,7000,200], [1000,1000,25000,1000], [4000,4000,220000,8000]],
-  'QUICK COMMERCE': [[10,50,1000,0], [200,400,2500,100], [2000,1000,100000,1500], [10000,4000,320000,10000]],
-  'SMART STORAGE': [[200,200,2000,200], [3000,1000,12000,2000], [5000,5000,18000,4000], [10000,7000,40000,12000]],
-  'RESTRO - CHAIN': [[50,200,1000,200], [500,400,2000,500], [1200,1400,40000,2000], [12000,8000,280000,10000]],
-  'TRACEABILITY': [[50,50,500,0], [200,200,2000,200], [500,2000,7500,1000], [10000,10000,38000,5000]],
-  'ROBO - PACKAGING': [[100,50,1500,250], [1200,500,4000,1000], [5000,2500,150000,2000], [8000,10000,450000,8000]]
+  'CONTRACT FARMING': [[10,100,500,0], [100,200,1000,20], [1000,1000,250,200], [2000,2000,10000,400]],
+  'AGRI IoT': [[100,10,1000,0], [500,300,3000,300], [1500,1500,6000,2000], [8000,8000,36000,7000]],
+  'WALLET': [[50,10,1000,0], [1200,400,3000,400], [1500,2000,8000,1800], [7000,10000,36000,5000]],
+  'SNACKS': [[10,20,1000,0], [300,200,1500,200], [1000,1100,7500,1500], [6000,4000,32000,8000]],
+  'QUICK COMMERCE': [[10,30,100,0], [200,400,2500,100], [2000,1200,10000,800], [10000,4000,50000,6000]],
+  'SMART STORAGE': [[200,200,2000,200], [3000,1600,5000,2000], [3000,5400,9000,4000], [10000,7500,40000,12000]],
+  'RESTRO - CHAIN': [[150, 300, 1000, 200], [300, 400, 2000, 500], [1200, 1400, 4000, 2000], [12000, 8000, 26000, 15000]],
+  'TRACEABILITY': [[30,30,300,0], [300,200,2000,200], [1200,2000,7500,1000], [10000,8000,38000,5000]],
+  'ROBO - PACKAGING': [[100,150,1500,200], [1200,500,4000,1000], [5000,2500,15000,2000], [4000,9000,45000,8000]]
 };
 
 const MULTIPLIER_TABLE = {
@@ -235,6 +235,11 @@ io.on('connection', (socket) => {
         currentPhase3Roll: null,
         role: finalRole // Set from join
       });
+      
+      // Round 1: Shuffle all Character tokens in random order
+      if (roomState.round === 1) {
+        shuffle(roomState.players);
+      }
     }
 
     // Broadcast current state to the user who just joined
@@ -252,8 +257,16 @@ io.on('connection', (socket) => {
 
   socket.on('take_loan', ({ roomId, amount, loanBreakdown, companiesString }) => {
     if (rooms[roomId]) {
-      const player = rooms[roomId].players.find(p => p.id === socket.id);
+      const room = rooms[roomId];
+      const player = room.players.find(p => p.id === socket.id);
       if (player && loanBreakdown && Array.isArray(loanBreakdown)) {
+        // Enforce Phase 1 turn order
+        const activePlayer = room.players[room.phase1TurnIndex || 0];
+        if (room.phase === 1 && (!activePlayer || activePlayer.id !== socket.id)) {
+           socket.emit('notification', 'ACTION REJECTED: It is not your turn!');
+           return;
+        }
+
         let actualLoanGranted = 0;
         
         loanBreakdown.forEach(req => {
@@ -277,16 +290,24 @@ io.on('connection', (socket) => {
           return;
         }
       }
-      io.to(roomId).emit('game_state_update', rooms[roomId]);
+      io.to(roomId).emit('game_state_update', room);
     }
   });
 
   socket.on('offer_deal', ({ roomId, targetPlayer, cash, loan }) => {
     if (rooms[roomId]) {
-      const proposer = rooms[roomId].players.find(p => p.id === socket.id);
-      const receiver = rooms[roomId].players.find(p => p.name.toLowerCase() === targetPlayer.toLowerCase());
+      const room = rooms[roomId];
+      const proposer = room.players.find(p => p.id === socket.id);
+      const receiver = room.players.find(p => p.name.toLowerCase() === targetPlayer.toLowerCase());
       
       if (proposer && receiver) {
+        // Enforce Phase 1 turn order
+        const activePlayer = room.players[room.phase1TurnIndex || 0];
+        if (room.phase === 1 && (!activePlayer || activePlayer.id !== socket.id)) {
+           socket.emit('notification', 'ACTION REJECTED: It is not your turn!');
+           return;
+        }
+
         if (cash > 0) {
           proposer.capital -= cash;
           receiver.capital += cash;
@@ -537,25 +558,36 @@ io.on('connection', (socket) => {
 
   socket.on('lock_phase1', ({ roomId }) => {
     if (rooms[roomId]) {
-      const player = rooms[roomId].players.find(p => p.id === socket.id);
+      const room = rooms[roomId];
+      const player = room.players.find(p => p.id === socket.id);
       if (player) {
+        // Enforce Phase 1 turn order
+        const activePlayer = room.players[room.phase1TurnIndex || 0];
+        if (!activePlayer || activePlayer.id !== socket.id) {
+           socket.emit('notification', 'ACTION REJECTED: It is not your turn!');
+           return;
+        }
+
         player.isLocked = true;
+        room.phase1TurnIndex = (room.phase1TurnIndex || 0) + 1;
         
-        // Check if all players are locked in Phase 1
-        const allLocked = rooms[roomId].players.every(p => p.isLocked);
-        if (allLocked) {
-          rooms[roomId].phase = 2; // Move to Phase 2
-          rooms[roomId].players.forEach(p => p.isLocked = false); // Reset locks
+        // If all players have taken their turn in Phase 1, transition to Phase 2
+        if (room.phase1TurnIndex >= room.players.length) {
+          room.phase = 2;
+          room.phase1TurnIndex = 0; // reset
+          room.players.forEach(p => p.isLocked = false); // Reset locks
           
           // --- Phase 2 Sequential Turn Order Setup ---
-          rooms[roomId].players.sort((a, b) => (a.actionCount || 0) - (b.actionCount || 0));
-          rooms[roomId].phase2TurnIndex = 0;
+          room.phase2TurnIndex = 0;
           
-          const firstPlayer = rooms[roomId].players[0];
+          const firstPlayer = room.players[0];
           io.to(roomId).emit('notification', `PHASE 2 BEGINS: It is ${firstPlayer ? firstPlayer.name : 'Unknown'}'s turn.`);
+        } else {
+          const nextPlayer = room.players[room.phase1TurnIndex];
+          io.to(roomId).emit('notification', `It is now ${nextPlayer.name}'s turn.`);
         }
         
-        io.to(roomId).emit('game_state_update', rooms[roomId]);
+        io.to(roomId).emit('game_state_update', room);
       }
     }
   });
@@ -724,8 +756,6 @@ io.on('connection', (socket) => {
         // Check if Phase 2 is finished (all players locked)
         const allLocked = rooms[roomId].players.every(p => p.isLocked);
         if (allLocked) {
-          // Sort players by action count ascending (least actions = first player)
-          rooms[roomId].players.sort((a, b) => (a.actionCount || 0) - (b.actionCount || 0));
           io.to(roomId).emit('phase2_end_trigger', rooms[roomId]);
         }
         
@@ -797,12 +827,21 @@ io.on('connection', (socket) => {
   socket.on('initial_roll', () => {
     const roomId = Object.keys(rooms).find(id => rooms[id].players.some(p => p.id === socket.id));
     if (!roomId) return;
-    const player = rooms[roomId].players.find(p => p.id === socket.id);
+    const room = rooms[roomId];
+    const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
+    
+    // Enforce Phase 3 turn order
+    const founders = room.players.filter(p => p.role === 'Founder');
+    const activeFounder = founders[room.phase3TurnIndex || 0];
+    if (!activeFounder || activeFounder.id !== socket.id) {
+       socket.emit('notification', 'ACTION REJECTED: It is not your turn!');
+       return;
+    }
     
     player.currentPhase3Roll = Math.floor(Math.random() * 10) + 1;
     socket.emit('initial_roll_result', { roll: player.currentPhase3Roll });
-    io.to(roomId).emit('game_state_update', rooms[roomId]);
+    io.to(roomId).emit('game_state_update', room);
   });
 
   socket.on('second_chance_roll', () => {
@@ -812,6 +851,14 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     
     if (player && player.lifelines > 0) {
+      // Enforce Phase 3 turn order
+      const founders = room.players.filter(p => p.role === 'Founder');
+      const activeFounder = founders[room.phase3TurnIndex || 0];
+      if (!activeFounder || activeFounder.id !== socket.id) {
+         socket.emit('notification', 'ACTION REJECTED: It is not your turn!');
+         return;
+      }
+
       player.lifelines -= 1;
       const oldRoll = player.currentPhase3Roll || 1;
       const newRoll = Math.floor(Math.random() * 10) + 1;
@@ -829,7 +876,7 @@ io.on('connection', (socket) => {
          wasKept: newTotal > oldTotal,
          newRollTested: newRoll
       });
-      io.to(roomId).emit('game_state_update', rooms[roomId]);
+      io.to(roomId).emit('game_state_update', room);
     }
   });
 
@@ -896,6 +943,14 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
 
+    // Enforce Phase 3 turn order
+    const founders = room.players.filter(p => p.role === 'Founder');
+    const activeFounder = founders[room.phase3TurnIndex || 0];
+    if (!activeFounder || activeFounder.id !== socket.id) {
+       socket.emit('notification', 'ACTION REJECTED: It is not your turn!');
+       return;
+    }
+
     let totalActualRevenue = 0;
     const currentRoll = player.currentPhase3Roll || 1;
 
@@ -950,6 +1005,7 @@ io.on('connection', (socket) => {
 
     player.cash += totalActualRevenue;
     player.hasClaimedRevenue = true; // Mark that they've rolled for this round
+    player.isLocked = true; // Lock UI feedback
 
     // 4. Bankruptcy Check
     if (player.cash < 0) {
@@ -958,39 +1014,69 @@ io.on('connection', (socket) => {
        socket.emit('notification', `CLAIMED REVENUE: $${totalActualRevenue}K`);
     }
 
-    const allClaimed = room.players.every(p => p.hasClaimedRevenue);
-    if (allClaimed) {
-      if (room.round >= 9) {
-        room.phase = 4; // End Game Phase
-        io.to(roomId).emit('notification', 'GAME OVER: 9 ROUNDS COMPLETED!');
-      } else {
-        room.round += 1;
-        room.phase = 1; // Back to Phase 1
-        
-        // Reset player state for new round
-        room.players.forEach(p => {
-          p.hasClaimedRevenue = false;
-        });
-
-        // Event Card Flip every 3 rounds (Round 1, 4, 7)
-        if (room.round === 4 || room.round === 7) {
-          room.activeEvent = room.eventDeck.shift();
-          io.to(roomId).emit('notification', `NEW EVENT CARD: ${room.activeEvent.name}`);
-          
-          // Release Funds to Investors
-          const fundAmount = room.round === 4 ? 5000 : 10000;
-          room.players.forEach(p => {
-             if (p.role === 'Investor') {
-                p.cash += fundAmount;
-                p.capital = (p.cash / 1000) + p.valuation - (p.loan / 1000);
-                io.to(roomId).emit('notification', `INVESTOR FUNDING: ${p.name} received $${fundAmount}K!`);
-             }
-          });
-        }
-      }
+    room.phase3TurnIndex = (room.phase3TurnIndex || 0) + 1;
+    if (room.phase3TurnIndex < founders.length) {
+       const nextFounder = founders[room.phase3TurnIndex];
+       io.to(roomId).emit('notification', `It is now ${nextFounder.name}'s turn to roll.`);
     }
 
+    // Emit immediate update so players see final cash values first
     io.to(roomId).emit('game_state_update', room);
+
+    const allClaimed = founders.every(p => p.hasClaimedRevenue);
+    if (allClaimed) {
+      setTimeout(() => {
+        if (!rooms[roomId]) return;
+        const currentRoom = rooms[roomId];
+        
+        if (currentRoom.round >= 9) {
+          currentRoom.phase = 4; // End Game Phase
+          io.to(roomId).emit('notification', 'GAME OVER: 9 ROUNDS COMPLETED!');
+        } else {
+          const prevOrder = currentRoom.players.map(p => p.id);
+          currentRoom.players.sort((a, b) => {
+            const apA = a.actionCount || 0;
+            const apB = b.actionCount || 0;
+            if (apA !== apB) {
+              return apA - apB; // Fewest AP spent goes first
+            }
+            return prevOrder.indexOf(a.id) - prevOrder.indexOf(b.id); // Tie breaker: went earlier in prev round
+          });
+
+          currentRoom.round += 1;
+          currentRoom.phase = 1; // Back to Phase 1
+          currentRoom.phase1TurnIndex = 0;
+          currentRoom.phase2TurnIndex = 0;
+          currentRoom.phase3TurnIndex = 0;
+          
+          // Reset player state for new round
+          currentRoom.players.forEach(p => {
+            p.hasClaimedRevenue = false;
+            p.isLocked = false;
+          });
+
+          const firstPlayer = currentRoom.players[0];
+          io.to(roomId).emit('notification', `PHASE 1 BEGINS: It is ${firstPlayer ? firstPlayer.name : 'Unknown'}'s turn.`);
+
+          // Event Card Flip every 3 rounds (Round 1, 4, 7)
+          if (currentRoom.round === 4 || currentRoom.round === 7) {
+            currentRoom.activeEvent = currentRoom.eventDeck.shift();
+            io.to(roomId).emit('notification', `NEW EVENT CARD: ${currentRoom.activeEvent.name}`);
+            
+            // Release Funds to Investors
+            const fundAmount = currentRoom.round === 4 ? 5000 : 10000;
+            currentRoom.players.forEach(p => {
+               if (p.role === 'Investor') {
+                  p.cash += fundAmount;
+                  p.capital = (p.cash / 1000) + p.valuation - (p.loan / 1000);
+                  io.to(roomId).emit('notification', `INVESTOR FUNDING: ${p.name} received $${fundAmount}K!`);
+               }
+            });
+          }
+        }
+        io.to(roomId).emit('game_state_update', currentRoom);
+      }, 5000); // 5 seconds delay so players have time to see their earnings and notifications
+    }
   });
 
   socket.on('launch_company', ({ roomId, targetPlayerId }) => {

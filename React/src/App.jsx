@@ -239,15 +239,15 @@ function App() {
   }
 
   const companyDataMap = {
-    'CONTRACT FARMING': [[10,100,500,0], [100,200,1000,20], [1000,1000,25000,200], [2000,2000,70000,400]],
-    'AGRI IoT': [[100,10,1000,0], [500,200,6000,200], [1000,1000,18000,2000], [8000,8000,36000,7000]],
-    'WALLET': [[100,10,1000,0], [1000,400,2000,400], [1500,2000,36000,800], [2500,12000,98000,5000]],
-    'SNACKS': [[10,20,1000,0], [200,200,7000,200], [1000,1000,25000,1000], [4000,4000,220000,8000]],
-    'QUICK COMMERCE': [[10,50,1000,0], [200,400,2500,100], [2000,1000,100000,1500], [10000,4000,320000,10000]],
-    'SMART STORAGE': [[200,200,2000,200], [3000,1000,12000,2000], [5000,5000,18000,4000], [10000,7000,40000,12000]],
-    'RESTRO - CHAIN': [[50,200,1000,200], [500,400,2000,500], [1200,1400,40000,2000], [12000,8000,280000,10000]],
-    'TRACEABILITY': [[50,50,500,0], [200,200,2000,200], [500,2000,7500,1000], [10000,10000,38000,5000]],
-    'ROBO - PACKAGING': [[100,50,1500,250], [1200,500,4000,1000], [5000,2500,150000,2000], [8000,10000,450000,8000]]
+    'CONTRACT FARMING': [[10,100,500,0], [100,200,1000,20], [1000,1000,2500,200], [2000,2000,10000,400]],
+    'AGRI IoT': [[100,10,1000,0], [500,300,3000,300], [1500,1500,6000,2000], [8000,8000,36000,7000]],
+    'WALLET': [[50,10,1000,0], [1200,400,3000,400], [1500,2000,8000,1800], [7000,10000,36000,5000]],
+    'SNACKS': [[10,20,1000,0], [300,200,1500,200], [1000,1100,7500,1500], [6000,4000,32000,8000]],
+    'QUICK COMMERCE': [[10,30,100,0], [200,400,2500,100], [2000,1200,10000,800], [10000,4000,50000,6000]],
+    'SMART STORAGE': [[200,200,2000,200], [3000,1600,5000,2000], [3000,5400,9000,4000], [10000,7500,40000,12000]],
+    'RESTRO - CHAIN': [[150, 300, 1000, 200], [300, 400, 2000, 500], [1200, 1400, 4000, 2000], [12000, 8000, 26000, 15000]],
+    'TRACEABILITY': [[30,30,300,0], [300,200,2000,200], [1200,2000,7500,1000], [10000,8000,38000,5000]],
+    'ROBO - PACKAGING': [[100,150,1500,200], [1200,500,4000,1000], [5000,2500,15000,2000], [4000,9000,45000,8000]]
   };
 
   const { players, deals, phase } = gameState;
@@ -297,8 +297,29 @@ function App() {
     setDealTarget(null);
   };
 
-  const isMyPhase2Turn = gamePhase === 2 && gameState?.players?.[gameState?.phase2TurnIndex]?.id === socketId;
-  const activePhase2Player = gamePhase === 2 ? gameState?.players?.[gameState?.phase2TurnIndex] : null;
+  const isMyPhase1Turn = gamePhase === 1 && gameState?.players?.[gameState?.phase1TurnIndex || 0]?.id === socketId;
+  const activePhase1Player = gamePhase === 1 ? gameState?.players?.[gameState?.phase1TurnIndex || 0] : null;
+
+  const isMyPhase2Turn = gamePhase === 2 && gameState?.players?.[gameState?.phase2TurnIndex || 0]?.id === socketId;
+  const activePhase2Player = gamePhase === 2 ? gameState?.players?.[gameState?.phase2TurnIndex || 0] : null;
+
+  const phase3Founders = (gameState?.players || []).filter(p => p.role === 'Founder');
+  const isMyPhase3Turn = gamePhase === 3 && phase3Founders[gameState?.phase3TurnIndex || 0]?.id === socketId;
+  const activePhase3Player = gamePhase === 3 ? phase3Founders[gameState?.phase3TurnIndex || 0] : null;
+
+  const isCurrentPlayerTurnActive = 
+    gamePhase === 1 ? isMyPhase1Turn : 
+    gamePhase === 2 ? isMyPhase2Turn : 
+    gamePhase === 3 ? isMyPhase3Turn : 
+    true;
+
+  const isTurnLocked = isLocked || !isCurrentPlayerTurnActive;
+
+  const activePlayerObj = 
+    gamePhase === 1 ? activePhase1Player :
+    gamePhase === 2 ? activePhase2Player :
+    gamePhase === 3 ? activePhase3Player :
+    null;
 
 
 
@@ -306,6 +327,8 @@ function App() {
     if (!isLocked) {
       if (gamePhase === 1) {
         sendAction('lock_phase1', {});
+      } else if (gamePhase === 2) {
+        sendAction('end_phase2_turn', {});
       } else {
         sendAction('lock_turn', {});
       }
@@ -803,54 +826,86 @@ function App() {
                 <span className="text-[8px] md:text-[10px] text-white/70 uppercase tracking-widest leading-none mb-1">Phase</span>
                 <span className="text-2xl md:text-3xl font-black text-white leading-none drop-shadow-md">{gamePhase}</span>
               </div>
-              <div className="flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center min-w-[60px]">
                 <span className="text-[8px] md:text-[10px] text-white/70 uppercase tracking-widest leading-none mb-1">Turn</span>
-                <span className="text-2xl md:text-3xl font-black text-white leading-none drop-shadow-md">All</span>
+                <div className="flex items-center gap-2 h-9 select-none">
+                  {/* Left side: column of small inactive tokens */}
+                  <div className="flex flex-col gap-0.5 justify-center">
+                    {(gameState?.players || []).map((p) => {
+                      const isActive = activePlayerObj && p.id === activePlayerObj.id;
+                      if (isActive) return null;
+                      const color = p.color || '#55ffb0';
+                      return (
+                        <div 
+                          key={p.id}
+                          className="w-2.5 h-2.5 rounded-full border border-black/50 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]"
+                          style={{
+                            background: `radial-gradient(circle at 35% 35%, ${color} 0%, #000 120%)`,
+                            opacity: 0.3
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Right side: large active token */}
+                  {activePlayerObj ? (
+                    <div 
+                      className="w-7 h-7 rounded-full border border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.8)] relative group transition-all"
+                      style={{
+                        background: `radial-gradient(circle at 35% 35%, ${activePlayerObj.color || '#55ffb0'} 20%, #000 100%)`,
+                        boxShadow: `0 0 12px ${(activePlayerObj.color || '#55ffb0')}a0, inset 0 2px 4px rgba(255,255,255,0.4)`
+                      }}
+                    >
+                      {/* Glossy highlight overlay */}
+                      <div className="absolute inset-0.5 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-white/30 pointer-events-none"></div>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-black text-white leading-none">All</span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Center: Action Buttons */}
-            <div className="flex-1 flex justify-center items-center gap-4 border-l border-[#1c4d3d]">
+            <div className="flex-1 flex justify-center items-center gap-6 border-l border-[#1c4d3d]">
               {gamePhase === 1 ? (
                 <>
-                  <div className="relative flex flex-col items-center">
-                    <button
-                      onClick={() => setActiveModal('loan')}
-                      className="bg-gradient-to-r from-[#d4af37] to-[#8a6818] p-[2px] rounded-full hover:scale-110 active:scale-95 transition-all shadow-lg"
-                    >
-                      <div className="bg-[#112a20] rounded-full p-2 lg:p-3">
-                        <Landmark size={24} className="text-[#d4af37]" />
-                      </div>
-                    </button>
-                    <span className="text-white/70 text-[10px] mt-1 font-medium tracking-wide uppercase">Take Bankloan</span>
-                  </div>
+                  <button
+                    onClick={() => !isTurnLocked && setActiveModal('loan')}
+                    disabled={isTurnLocked}
+                    className={`px-6 py-2.5 rounded-xl bg-gradient-to-br from-[#2e8b57] to-[#1c5435] border border-[#55ffb0]/20 text-white font-semibold tracking-wide select-none cursor-pointer transition-all ${isTurnLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:from-[#3cb371] hover:to-[#228b22] hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(46,139,87,0.4)]'}`}
+                  >
+                    Take Bank Loan
+                  </button>
+                  <button
+                    onClick={() => !isTurnLocked && setActiveModal('personaSelect')}
+                    disabled={isTurnLocked}
+                    className={`px-6 py-2.5 rounded-xl bg-gradient-to-br from-[#2e8b57] to-[#1c5435] border border-[#55ffb0]/20 text-white font-semibold tracking-wide select-none cursor-pointer transition-all ${isTurnLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:from-[#3cb371] hover:to-[#228b22] hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(46,139,87,0.4)]'}`}
+                  >
+                    Offer a Deal
+                  </button>
                 </>
               ) : gamePhase === 2 ? (
-                <Phase2Dashboard isLocked={isLocked || !isMyPhase2Turn} onActionClick={(action) => setActiveModal(action)} />
+                <Phase2Dashboard isLocked={isTurnLocked} onActionClick={(action) => setActiveModal(action)} />
               ) : (
                 <>
-                  <div className="relative flex flex-col items-center">
-                    <button
-                      onClick={() => setActiveModal('phase3Dice')}
-                      className="bg-gradient-to-r from-[#FF5555] to-[#FF0000] p-[2px] rounded-full hover:scale-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,85,85,0.4)]"
-                    >
-                      <div className="bg-[#2A0D12] rounded-full p-2 lg:p-3">
-                        <Activity size={24} className="text-[#FF5555]" />
-                      </div>
-                    </button>
-                    <span className="text-white/70 text-[10px] mt-1 font-medium tracking-wide uppercase drop-shadow-md">Roll the Dice</span>
-                  </div>
-                  <div className="relative flex flex-col items-center">
-                    <button
-                      onClick={() => setActiveModal('loanRepay')}
-                      className="bg-gradient-to-r from-[#d4af37] to-[#8a6818] p-[2px] rounded-full hover:scale-110 active:scale-95 transition-all shadow-lg"
-                    >
-                      <div className="bg-[#112a20] rounded-full p-2 lg:p-3">
-                        <Landmark size={24} className="text-[#d4af37]" />
-                      </div>
-                    </button>
-                    <span className="text-white/70 text-[10px] mt-1 font-medium tracking-wide uppercase drop-shadow-md">Repay Loan</span>
-                  </div>
+                  <button
+                    onClick={() => !isTurnLocked && setActiveModal('phase3Dice')}
+                    disabled={isTurnLocked}
+                    className={`px-6 py-2 rounded-2xl text-[10px] md:text-xs font-bold transition-all shadow-[0_4px_12px_rgba(0,0,0,0.3)] bg-gradient-to-br from-[#4ade80] to-[#166534] text-white text-center flex flex-col items-center justify-center min-w-[120px] h-[52px] leading-tight border border-[#e5c158] shadow-[0_0_15px_rgba(229,193,88,0.4)] ${isTurnLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:from-[#52ea90] hover:to-[#1b753d] hover:scale-105 active:scale-95'}`}
+                  >
+                    <span>Roll</span>
+                    <span>the Dice</span>
+                  </button>
+                  <button
+                    onClick={() => !isTurnLocked && setActiveModal('loanRepay')}
+                    disabled={isTurnLocked}
+                    className={`px-6 py-2 rounded-2xl text-[10px] md:text-xs font-bold transition-all shadow-[0_4px_12px_rgba(0,0,0,0.3)] bg-gradient-to-br from-[#4ade80] to-[#166534] text-white text-center flex flex-col items-center justify-center min-w-[120px] h-[52px] leading-tight border border-[#166534] ${isTurnLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:from-[#52ea90] hover:to-[#1b753d] hover:scale-105 active:scale-95'}`}
+                  >
+                    <span>Repay</span>
+                    <span>Loan</span>
+                  </button>
                 </>
               )}
             </div>
@@ -859,19 +914,21 @@ function App() {
             <div className="w-[120px] md:w-[150px] lg:w-[180px] h-full flex items-center justify-center border-l border-[#1c4d3d]">
               <button 
                 onClick={handleLockDeal}
-                disabled={isLocked}
-                className={`relative group overflow-hidden bg-gradient-to-br from-[#d4af37] via-[#FFE885] to-[#8a6818] text-black font-black uppercase tracking-widest text-[10px] md:text-[11px] lg:text-xs py-2 md:py-3 px-3 md:px-5 lg:px-6 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all transform ${isLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:scale-105 active:scale-95 hover:shadow-[0_0_30px_rgba(255,232,133,0.6)]'}`}
+                disabled={isTurnLocked}
+                className={`relative group overflow-hidden bg-gradient-to-br from-[#d4af37] via-[#FFE885] to-[#8a6818] text-black font-black uppercase tracking-widest text-[10px] md:text-[11px] lg:text-xs py-2 md:py-3 px-3 md:px-5 lg:px-6 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all transform ${isTurnLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:scale-105 active:scale-95 hover:shadow-[0_0_30px_rgba(255,232,133,0.6)]'}`}
               >
                 {/* Shine effect */}
-                {!isLocked && <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12"></div>}
+                {!isTurnLocked && <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12"></div>}
                 
                 <div className="flex flex-col items-center gap-0.5 relative z-10 text-center">
                  {isLocked ? (
                    <span className="drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)] leading-tight text-xs">Waiting for<br/>other players...</span>
+                 ) : !isCurrentPlayerTurnActive ? (
+                   <span className="drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)] leading-tight text-xs">Waiting for<br/>your turn...</span>
                  ) : (
                    <span className="drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)] leading-tight">
                      {gamePhase === 1 ? (
-                       <>PROCEED TO<br/>PHASE 2</>
+                       <>END<br/>PHASE 1</>
                      ) : gamePhase === 2 ? (
                        <>END<br/>ACTIONS</>
                      ) : (

@@ -1,98 +1,77 @@
-import React, { useMemo, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
+import React, { useMemo, forwardRef, useRef, useEffect } from 'react';
 import { useConvexPolyhedron } from '@react-three/cannon';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 
-const D10 = forwardRef(({ onRest, isRolling, ...props }, ref) => {
-  // 1. Generate Geometry Data
-    const { vertices, faces, textPlacements } = useMemo(() => {
-      const r = 1.0;
-      const h = 1.05;
-      const e = 0.1;
-      const v = [];
+const D10 = forwardRef(({ onRest, isRolling, serverRoll, ...props }, ref) => {
+  // 1. Generate Geometry Data (Pentagonal Bipyramid D10 with 10 Triangular Faces)
+  const { vertices, faces, textPlacements } = useMemo(() => {
+    const r = 1.1; // radius
+    const h = 1.25; // height to apex
+    const v = [];
     
-    // Equator vertices
-    for (let i = 0; i < 10; i++) {
-      const theta = (i * 2 * Math.PI) / 10;
-      const y = i % 2 === 0 ? e : -e;
-      v.push(new THREE.Vector3(r * Math.cos(theta), y, r * Math.sin(theta)));
+    // Equator vertices (5 vertices at y = 0)
+    for (let i = 0; i < 5; i++) {
+      const theta = (i * 2 * Math.PI) / 5;
+      v.push(new THREE.Vector3(r * Math.cos(theta), 0, r * Math.sin(theta)));
     }
     // Apex vertices
-    v.push(new THREE.Vector3(0, h, 0));  // 10: Top
-    v.push(new THREE.Vector3(0, -h, 0)); // 11: Bottom
+    v.push(new THREE.Vector3(0, h, 0));  // 5: Top Apex
+    v.push(new THREE.Vector3(0, -h, 0)); // 6: Bottom Apex
 
     const rawVertices = v.map(p => [p.x, p.y, p.z]);
     const rawFaces = [];
     const textPlacements = [];
 
-    const topNumbers = [0, 7, 4, 1, 6];
-    const bottomNumbers = [8, 5, 2, 9, 3];
+    // 0 to 9 numbers (0 is treated as 10 in the game)
+    const topNumbers = [8, 1, 4, 6, 2];
+    const bottomNumbers = [3, 0, 5, 7, 9];
     
-    // Create Top Faces
+    // Create Top Faces (5 faces)
     let topIdx = 0;
-    for (let i = 0; i < 10; i += 2) {
-      // Triangles for physics (Counter-Clockwise winding order)
-      rawFaces.push([10, (i + 1) % 10, i]);
-      rawFaces.push([10, i, (i - 1 + 10) % 10]);
+    for (let i = 0; i < 5; i++) {
+      const next = (i + 1) % 5;
+      // CCW winding order: Apex, next, i
+      rawFaces.push([5, next, i]);
       
-      const A = v[10];
-      const B = v[(i + 1) % 10];
+      const A = v[5];
+      const B = v[next];
       const C = v[i];
       const edge1 = new THREE.Vector3().subVectors(B, A);
       const edge2 = new THREE.Vector3().subVectors(C, A);
       const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
 
-      // Project center onto the plane defined by A and normal to ensure it's perfectly on the surface
-      const rawCenter = new THREE.Vector3()
-        .addVectors(v[10], v[i])
-        .add(v[(i + 1) % 10])
-        .add(v[(i - 1 + 10) % 10])
-        .multiplyScalar(0.25);
-      
-      const distance = new THREE.Vector3().subVectors(rawCenter, A).dot(normal);
-      const center = rawCenter.clone().sub(normal.clone().multiplyScalar(distance));
-      
+      // Centroid of the triangle
+      const center = new THREE.Vector3()
+        .addVectors(A, B)
+        .add(C)
+        .multiplyScalar(1 / 3);
+
       const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
-      const up = new THREE.Vector3().subVectors(A, center).projectOnPlane(normal).normalize(); // Point towards Apex A
-      const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-      const angle = currentUp.angleTo(up);
-      const cross = currentUp.clone().cross(up);
-      if (cross.dot(normal) < 0) quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), -angle));
-      else quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), angle));
 
       textPlacements.push({ pos: center.toArray(), quat: quaternion.toArray(), num: topNumbers[topIdx++] });
     }
 
-    // Create Bottom Faces
+    // Create Bottom Faces (5 faces)
     let botIdx = 0;
-    for (let i = 1; i < 10; i += 2) {
-      // Triangles for physics (Counter-Clockwise winding order)
-      rawFaces.push([11, i, (i + 1) % 10]);
-      rawFaces.push([11, (i - 1 + 10) % 10, i]);
+    for (let i = 0; i < 5; i++) {
+      const next = (i + 1) % 5;
+      // CCW winding order: Bottom Apex, i, next
+      rawFaces.push([6, i, next]);
       
-      const A = v[11];
+      const A = v[6];
       const B = v[i];
-      const C = v[(i + 1) % 10];
+      const C = v[next];
       const edge1 = new THREE.Vector3().subVectors(B, A);
       const edge2 = new THREE.Vector3().subVectors(C, A);
       const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
       
-      const rawCenter = new THREE.Vector3()
-        .addVectors(v[11], v[i])
-        .add(v[(i + 1) % 10])
-        .add(v[(i - 1 + 10) % 10])
-        .multiplyScalar(0.25);
+      const center = new THREE.Vector3()
+        .addVectors(A, B)
+        .add(C)
+        .multiplyScalar(1 / 3);
 
-      const distance = new THREE.Vector3().subVectors(rawCenter, A).dot(normal);
-      const center = rawCenter.clone().sub(normal.clone().multiplyScalar(distance));
-      
       const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
-      const up = new THREE.Vector3().subVectors(A, center).projectOnPlane(normal).normalize(); // Point towards Apex A (which is bottom apex)
-      const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-      const angle = currentUp.angleTo(up);
-      const cross = currentUp.clone().cross(up);
-      if (cross.dot(normal) < 0) quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), -angle));
-      else quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), angle));
 
       textPlacements.push({ pos: center.toArray(), quat: quaternion.toArray(), num: bottomNumbers[botIdx++] });
     }
@@ -111,20 +90,194 @@ const D10 = forwardRef(({ onRest, isRolling, ...props }, ref) => {
     ...props
   }));
 
+  // Create visual geometry based on vertices/faces with soft blended normals for rounded corners
+  const geo = useMemo(() => {
+    const geometry = new THREE.BufferGeometry();
+    
+    // Calculate face normals
+    const faceNormals = [];
+    const faceVertices = [];
+    faces.forEach(face => {
+      const A = vertices[face[0]];
+      const B = vertices[face[1]];
+      const C = vertices[face[2]];
+      const vA = new THREE.Vector3(...A);
+      const vB = new THREE.Vector3(...B);
+      const vC = new THREE.Vector3(...C);
+      const edge1 = new THREE.Vector3().subVectors(vB, vA);
+      const edge2 = new THREE.Vector3().subVectors(vC, vA);
+      const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+      faceNormals.push(normal);
+      faceVertices.push([face[0], face[1], face[2]]);
+    });
+
+    // Calculate shared vertex normals for interpolation (softens the edges)
+    const vertexNormalsShared = Array(vertices.length).fill(null).map(() => new THREE.Vector3());
+    faceVertices.forEach((fVerts, fIdx) => {
+      const normal = faceNormals[fIdx];
+      vertexNormalsShared[fVerts[0]].add(normal);
+      vertexNormalsShared[fVerts[1]].add(normal);
+      vertexNormalsShared[fVerts[2]].add(normal);
+    });
+    vertexNormalsShared.forEach(vn => vn.normalize());
+
+    // Build position and blended normal buffers
+    const positions = [];
+    const normals = [];
+    
+    faces.forEach((face, fIdx) => {
+      const fNormal = faceNormals[fIdx];
+      
+      face.forEach(vIdx => {
+        const v = vertices[vIdx];
+        positions.push(...v);
+        
+        // Blend face normal (35%) and shared vertex normal (65%) to simulate very smooth rounded corners
+        const sharedNormal = vertexNormalsShared[vIdx];
+        const blendedNormal = new THREE.Vector3()
+          .addScaledVector(fNormal, 0.35)
+          .addScaledVector(sharedNormal, 0.65)
+          .normalize();
+          
+        normals.push(blendedNormal.x, blendedNormal.y, blendedNormal.z);
+      });
+    });
+
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    
+    // Generate UVs for marble texture mapping
+    const uvs = [];
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i+1];
+      const z = positions[i+2];
+      const vec = new THREE.Vector3(x, y, z).normalize();
+      const u = 0.5 + Math.atan2(vec.z, vec.x) / (2 * Math.PI);
+      const v = 0.5 + Math.asin(vec.y) / Math.PI;
+      uvs.push(u, v);
+    }
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    
+    return geometry;
+  }, [vertices, faces]);
+
+  const marbleTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Fill base dark teal
+    ctx.fillStyle = '#053f44';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Draw soft marbled clouds (Radial Gradients)
+    for (let i = 0; i < 60; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const radius = 35 + Math.random() * 95;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      
+      const r = Math.random();
+      if (r < 0.25) {
+        grad.addColorStop(0, 'rgba(168, 238, 218, 0.25)'); // Light pearlescent mint
+      } else if (r < 0.5) {
+        grad.addColorStop(0, 'rgba(2, 28, 30, 0.55)');    // Deep dark teal vein
+      } else if (r < 0.75) {
+        grad.addColorStop(0, 'rgba(13, 137, 148, 0.45)');   // Vibrant turquoise
+      } else {
+        grad.addColorStop(0, 'rgba(6, 88, 96, 0.55)');     // Mid teal
+      }
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Add diagonal pearlescent shimmer bands
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      const w = 25 + Math.random() * 75;
+      const offset = (Math.random() - 0.5) * 220;
+      ctx.moveTo(-100 + offset, -100);
+      ctx.lineTo(-100 + w + offset, -100);
+      ctx.lineTo(612 + w + offset, 612);
+      ctx.lineTo(612 + offset, 612);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Draw fine wiggly white lines (cracks/veins)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      let x = Math.random() * 512;
+      let y = Math.random() * 512;
+      ctx.moveTo(x, y);
+      for (let j = 0; j < 5; j++) {
+        x += (Math.random() - 0.5) * 90;
+        y += (Math.random() - 0.5) * 90;
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }, []);
+
+  // Update text placements to point toward the top apex for consistent, readable orientation
+  const orientedPlacements = useMemo(() => {
+    return textPlacements.map(tp => {
+      const posVec = new THREE.Vector3(...tp.pos);
+      const normalVec = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion().fromArray(tp.quat));
+      
+      // Calculate rotation pointing toward the top apex (vertices[5])
+      const topApex = new THREE.Vector3(0, 1.25, 0);
+      const upDir = new THREE.Vector3().subVectors(topApex, posVec).projectOnPlane(normalVec).normalize();
+      
+      const newQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normalVec);
+      const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(newQuat);
+      const angle = currentUp.angleTo(upDir);
+      const cross = currentUp.clone().cross(upDir);
+      
+      if (cross.dot(normalVec) < 0) {
+        newQuat.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -angle));
+      } else {
+        newQuat.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), angle));
+      }
+
+      return {
+        ...tp,
+        quat: newQuat.toArray()
+      };
+    });
+  }, [textPlacements]);
+
+  const hasAligned = useRef(false);
+  const isSleeping = useRef(false);
+  const velocity = useRef([0,0,0]);
+  const angularVelocity = useRef([0,0,0]);
+
   // 3. Trigger Roll when isRolling changes
   useEffect(() => {
     if (isRolling) {
       console.log("Triggering 3D roll physics!");
+      hasAligned.current = false;
       api.wakeUp();
-      // Start perfectly centered
       api.position.set(0, 5, 0);
       api.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
       
-      // Reset velocities
       api.velocity.set(0, 0, 0);
       api.angularVelocity.set(0, 0, 0);
       
-      // Apply a modest local impulse to cause a tumble, rather than just pushing it off screen
       api.applyLocalImpulse(
          [(Math.random() - 0.5) * 5, -10, (Math.random() - 0.5) * 5], 
          [Math.random(), Math.random(), Math.random()]
@@ -134,32 +287,47 @@ const D10 = forwardRef(({ onRest, isRolling, ...props }, ref) => {
   }, [isRolling, api]);
 
   // 4. Track Sleep State to calculate result
-  const isSleeping = useRef(false);
-  const velocity = useRef([0,0,0]);
-  const angularVelocity = useRef([0,0,0]);
-
   useEffect(() => {
     const unsubVel = api.velocity.subscribe(v => velocity.current = v);
     const unsubAng = api.angularVelocity.subscribe(v => angularVelocity.current = v);
     
-    // Check if stopped every 200ms
     const interval = setInterval(() => {
       const speed = Math.abs(velocity.current[0]) + Math.abs(velocity.current[1]) + Math.abs(velocity.current[2]);
       const angSpeed = Math.abs(angularVelocity.current[0]) + Math.abs(angularVelocity.current[1]) + Math.abs(angularVelocity.current[2]);
       
+      // Force alignment when die is settling (speed < 0.08) so it visualizes the server roll perfectly
+      if (speed < 0.08 && angSpeed < 0.08 && !isSleeping.current && !hasAligned.current) {
+        hasAligned.current = true;
+        if (serverRoll !== null) {
+          const targetNum = serverRoll === 10 ? 0 : serverRoll;
+          const targetPlacement = orientedPlacements.find(tp => tp.num === targetNum);
+          
+          if (targetPlacement) {
+            const localQuat = new THREE.Quaternion().fromArray(targetPlacement.quat);
+            const localNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(localQuat);
+            
+            const qAlign = new THREE.Quaternion().setFromUnitVectors(localNormal, new THREE.Vector3(0, 1, 0));
+            const randomYAngle = Math.random() * Math.PI * 2;
+            const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), randomYAngle);
+            const targetBodyQuat = qY.multiply(qAlign);
+            
+            api.quaternion.set(targetBodyQuat.x, targetBodyQuat.y, targetBodyQuat.z, targetBodyQuat.w);
+            api.velocity.set(0, 0, 0);
+            api.angularVelocity.set(0, 0, 0);
+          }
+        }
+      }
+
       if (speed < 0.05 && angSpeed < 0.05 && !isSleeping.current) {
-        // It has stopped! Give it a tiny bit of time to settle flat.
         setTimeout(() => {
            if (!bodyRef.current) return;
            isSleeping.current = true;
            
-           // Calculate which face is pointing up
-           // Since textPlacements have the normals built into their quaternions, we can check which text normal is closest to Vector3(0,1,0)
            const bodyQuat = new THREE.Quaternion().copy(bodyRef.current.quaternion);
            let bestFace = null;
            let maxDot = -Infinity;
            
-           textPlacements.forEach(tp => {
+           orientedPlacements.forEach(tp => {
               const localQuat = new THREE.Quaternion().fromArray(tp.quat);
               const worldQuat = localQuat.premultiply(bodyQuat);
               const worldNormal = new THREE.Vector3(0,0,1).applyQuaternion(worldQuat);
@@ -183,44 +351,33 @@ const D10 = forwardRef(({ onRest, isRolling, ...props }, ref) => {
       unsubAng();
       clearInterval(interval);
     };
-  }, [api, textPlacements, onRest, bodyRef]);
-
-  // Create visual geometry based on vertices/faces
-  const geo = useMemo(() => {
-    const geometry = new THREE.BufferGeometry();
-    const positions = [];
-    faces.forEach(face => {
-      positions.push(...vertices[face[0]]);
-      positions.push(...vertices[face[1]]);
-      positions.push(...vertices[face[2]]);
-    });
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.computeVertexNormals();
-    return geometry;
-  }, [vertices, faces]);
+  }, [api, onRest, bodyRef, serverRoll, orientedPlacements]);
 
   return (
     <mesh ref={bodyRef} geometry={geo} castShadow receiveShadow>
       <meshPhysicalMaterial 
-        color="#0d6568" 
-        roughness={0.1} 
-        metalness={0.1}
-        clearcoat={1.0}
-        clearcoatRoughness={0.1}
-        envMapIntensity={0.8}
+        color="#ffffff" 
+        map={marbleTexture}
+        roughness={0.65} 
+        metalness={0.0}
+        clearcoat={0.15}
+        clearcoatRoughness={0.6}
+        envMapIntensity={0.6}
         transparent={false}
         opacity={1.0}
         side={THREE.DoubleSide}
       />
-      {textPlacements.map((tp, i) => (
+      {orientedPlacements.map((tp, i) => (
         <group key={i} position={tp.pos} quaternion={tp.quat}>
           <Text
-            fontSize={0.5}
-            color="white"
+            fontSize={0.45}
+            color="#ffffff"
             anchorX="center"
             anchorY="middle"
-            position={[0, 0, 0.02]} // pushed out just enough
-            font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff"
+            position={[0, 0, 0.015]} // Pushed out to 0.015 to prevent any z-fighting / clipping
+            font="https://fonts.gstatic.com/s/lora/v37/0QI6MX1D_JOuGQbT0gvTJPa787z5vCJG.ttf"
+            outlineWidth={0.015}
+            outlineColor="#021a1d"
           >
             {tp.num}
           </Text>

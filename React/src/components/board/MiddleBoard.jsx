@@ -249,35 +249,41 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
 
           {/* Player Tokens Stack (Avatars with glowing borders) */}
           <div className="flex flex-col justify-center items-center gap-4 w-full z-20 -my-4 relative">
-            {Array.from({ length: 4 }).map((_, idx) => {
-              // Sort valid players by actionCount descending (most actions at the top)
-              const sortedPlayers = [...players].sort((a, b) => (b.actionCount || 0) - (a.actionCount || 0));
-              const p = sortedPlayers[idx];
-              const borderColor = p ? p.color : ['#55ffb0', '#ff5555', '#e5c158', '#55bbff'][idx];
+            {(() => {
+              // Sort valid players by actionCount ascending (least actions / lowest at the top)
+              const sortedPlayers = [...players].sort((a, b) => {
+                const acA = a.actionCount || 0;
+                const acB = b.actionCount || 0;
+                if (acA !== acB) {
+                  return acA - acB;
+                }
+                return players.indexOf(a) - players.indexOf(b);
+              });
               
-              return (
-                <div 
-                  key={p ? p.id : `empty-${idx}`}
-                  className="w-[70px] h-[70px] rounded-full border-4 flex items-center justify-center text-3xl cursor-pointer hover:scale-110 transition-transform relative shadow-[0_10px_20px_rgba(0,0,0,0.8)] bg-black"
-                  style={{ 
-                    borderColor: borderColor,
-                    boxShadow: `0 0 20px ${borderColor}80, inset 0 0 10px rgba(0,0,0,0.8)`
-                  }}
-                >
-                  {/* Image overlay mock for characters */}
-                  <div className="absolute inset-0 rounded-full mix-blend-overlay opacity-50 bg-gradient-to-b from-transparent to-black pointer-events-none"></div>
-                  {idx === 0 ? (
-                     <img src="/player-avatar-1.png" alt="Player 1" className="w-[120%] h-[120%] object-cover absolute z-10 rounded-full" />
-                  ) : idx === 1 ? (
-                     <img src="/player-avatar-2.png" alt="Player 2" className="w-[120%] h-[120%] object-cover absolute z-10 rounded-full" />
-                  ) : idx === 2 ? (
-                     <img src="/player-avatar-3.png" alt="Player 3" className="w-[120%] h-[120%] object-cover absolute z-10 rounded-full" />
-                  ) : idx === 3 ? (
-                     <img src="/player-avatar-4.png" alt="Player 4" className="w-[120%] h-[120%] object-cover absolute z-10 rounded-full" />
-                  ) : null}
-                </div>
-              );
-            })}
+              return sortedPlayers.map((p, sortedIdx) => {
+                const originalIdx = players.findIndex(pl => pl.id === p.id);
+                const borderColor = p.color || '#55ffb0';
+                
+                // Determine avatar image path based on their original index in the players roster
+                const avatarNum = (originalIdx !== -1 ? originalIdx : sortedIdx) % 4 + 1;
+                const avatarSrc = `/player-avatar-${avatarNum}.png`;
+
+                return (
+                  <div 
+                    key={p.id}
+                    className="w-[70px] h-[70px] rounded-full border-4 flex items-center justify-center text-3xl cursor-pointer hover:scale-110 transition-transform relative shadow-[0_10px_20px_rgba(0,0,0,0.8)] bg-black"
+                    style={{ 
+                      borderColor: borderColor,
+                      boxShadow: `0 0 20px ${borderColor}80, inset 0 0 10px rgba(0,0,0,0.8)`
+                    }}
+                  >
+                    {/* Image overlay mock for characters */}
+                    <div className="absolute inset-0 rounded-full mix-blend-overlay opacity-50 bg-gradient-to-b from-transparent to-black pointer-events-none"></div>
+                    <img src={avatarSrc} alt={p.name} className="w-[120%] h-[120%] object-cover absolute z-10 rounded-full" />
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           {/* PR Services Info */}
@@ -305,26 +311,27 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
       {/* =========================================
           BOTTOM ACTION BAR (1-30)
       ========================================= */}
-      <div className="absolute bottom-0 left-0 w-full h-[35px] bg-[#061c17]/90 border-t border-[#1d6b56] flex pointer-events-auto z-40 backdrop-blur-sm">
+      <div className="absolute bottom-0 left-0 w-full h-[45px] bg-[#061c17]/90 border-t border-[#1d6b56] flex pointer-events-auto z-40 backdrop-blur-sm">
         {[...Array(30)].map((_, i) => {
           const squareNum = i + 1;
-          const playersOnSquare = players.filter(p => p.actionPos === squareNum);
+          const playersOnSquare = players.filter(p => (p.actionCount || 0) === squareNum);
 
           return (
             <div 
               key={i}
               className="flex-1 border-r border-[#1d6b56]/50 relative flex flex-col items-center justify-center overflow-hidden hover:bg-[#1d6b56]/40 transition-colors"
             >
-              <span className="absolute text-[8px] text-[#30a887]/50 font-bold select-none z-0">{squareNum}</span>
+              <span className="absolute text-[10px] text-[#30a887]/50 font-bold select-none z-0">{squareNum}</span>
               
-              {/* Massive Checkers-style Tokens */}
+              {/* Checkers-style Tokens */}
               {playersOnSquare.length > 0 && (
-                 <div className="absolute inset-0 flex items-center justify-center p-0.5">
+                 <div className="absolute inset-0 flex items-center justify-center gap-0.5 p-1 z-10">
                     {playersOnSquare.map(p => (
                       <div 
                         key={p.id} 
-                        className="w-full h-full rounded-full shadow-[0_0_5px_rgba(0,0,0,0.8)] z-10 border border-black/50"
+                        className="w-5 h-5 rounded-full shadow-[0_2px_5px_rgba(0,0,0,0.8)] border-2 border-white/30 transition-all duration-300 hover:scale-110"
                         style={{ backgroundColor: p.color }}
+                        title={`${p.name}: ${p.actionCount} Actions`}
                       ></div>
                     ))}
                  </div>
