@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* ── Modern Mint Design Tokens ───────────────────────────────────────────── */
+:root {
+  /* Primary teal — matches the board chrome in Figma */
+  --teal:       #1de9d6;
+  --teal-dim:   #0fb8a9;
+  --teal-dark:  #08737a;
+  --teal-glow:  rgba(29, 233, 214, 0.22);
+  --teal-glow-strong: rgba(29, 233, 214, 0.45);
+
+  /* Gold — "MODERN MINT" wordmark, coins, ranks */
+  --gold:        #d4a843;
+  --gold-bright: #f0c84e;
+  --gold-dim:    #8a6820;
+  --gold-glow:   rgba(212, 168, 67, 0.25);
+
+  /* Backgrounds — dark teal-black, matching Figma board atmosphere */
+  --bg-void:   #03090c;   /* deepest black */
+  --bg-deep:   #060e12;   /* base page bg */
+  --bg-mid:    #0c1c22;   /* slightly lighter layer */
+  --bg-board:  #0e2428;   /* board surface teal */
+  --bg-card:   rgba(8, 24, 30, 0.88);
+  --bg-glass:  rgba(6, 20, 26, 0.75);
+
+  /* Borders */
+  --border-teal:   rgba(29, 233, 214, 0.20);
+  --border-teal-hi: rgba(29, 233, 214, 0.50);
+  --border-gold:   rgba(212, 168, 67, 0.30);
+
+  /* Text */
+  --text-primary: #d8eaec;
+  --text-muted:   #4a7a82;
+  --text-faint:   #2a4a52;
+
+  /* Circuit pattern colour */
+  --circuit: rgba(29, 233, 214, 0.07);
+
+  /* Green lobby palette */
+  --green-primary:  #1a7a45;
+  --green-glow:     rgba(20, 110, 55, 0.40);
+  --green-bright:   #22c462;
+  --bg-lobby:       #050e07;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* html keeps the dark base as the ultimate fallback; body is transparent so a
+   fixed PageBackground layer (e.g. the lobby artwork) shows through instead of
+   being covered by an opaque body background. */
+html {
+  background: var(--bg-deep);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  color: var(--text-primary);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Circuit board scanline overlay ─────────────────────────────────────── */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.018) 2px,
+    rgba(0, 0, 0, 0.018) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg-void); }
+::-webkit-scrollbar-thumb { background: var(--teal-dark); border-radius: 2px; }
+
+/* ── Focus ring ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 1.5px solid var(--teal);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Utility: teal text glow ─────────────────────────────────────────────── */
+.glow-teal {
+  text-shadow: 0 0 18px rgba(29, 233, 214, 0.7),
+               0 0 40px rgba(29, 233, 214, 0.35);
+}
+
+/* ── Utility: gold text glow ─────────────────────────────────────────────── */
+.glow-gold {
+  text-shadow: 0 0 16px rgba(212, 168, 67, 0.6),
+               0 0 32px rgba(212, 168, 67, 0.25);
+}
+
+/* ── Utility: teal box glow ──────────────────────────────────────────────── */
+.glow-box-teal {
+  box-shadow:
+    0 0 0 1px rgba(29, 233, 214, 0.25),
+    0 0 20px rgba(29, 233, 214, 0.12),
+    inset 0 1px 0 rgba(29, 233, 214, 0.08);
+}
+
+/* ── Keyframe: pulse ring ────────────────────────────────────────────────── */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.95); opacity: 0.6; }
+  50%  { transform: scale(1.04); opacity: 0.25; }
+  100% { transform: scale(0.95); opacity: 0.6; }
+}
+
+/* ── Keyframe: float ─────────────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
