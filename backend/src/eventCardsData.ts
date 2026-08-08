@@ -1,4 +1,11 @@
-const eventCardsData = [
+export interface EventCard {
+  id: string;
+  name: string;
+  description: string;
+  effect: string;
+}
+
+const eventCardsData: EventCard[] = [
   {
     id: 'E1',
     name: 'Bull Market',
@@ -19,8 +26,6 @@ const eventCardsData = [
   }
 ];
 
-function generateEventDeck() {
+export function generateEventDeck(): EventCard[] {
   return [...eventCardsData];
 }
-
-module.exports = { generateEventDeck };

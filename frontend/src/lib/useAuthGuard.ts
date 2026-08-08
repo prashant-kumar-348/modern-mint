@@ -22,7 +22,12 @@ export function useAuthGuard(): boolean {
     if (isAuthenticated()) {
       startTransition(() => setReady(true));
     } else {
-      router.replace("/login");
+      if (typeof window !== "undefined") {
+        const currentPath = window.location.pathname + window.location.search;
+        router.replace(`/login?redirectTo=${encodeURIComponent(currentPath)}`);
+      } else {
+        router.replace("/login");
+      }
     }
   }, [router]);
 

@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 
-export default function Lobby({ onJoin, existingRoomId }) {
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
+export default function Lobby({ onJoin, existingRoomId, token }) {
   console.log("Lobby render:", { existingRoomId });
   const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState('Player' + Math.floor(Math.random() * 1000));
+  const [username] = useState(() => {
+    return sessionStorage.getItem('modernmint_username') || ('Player' + Math.floor(Math.random() * 1000));
+  });
   const [role, setRole] = useState('Founder');
 
   const handleAction = async () => {
@@ -12,12 +16,32 @@ export default function Lobby({ onJoin, existingRoomId }) {
     } else {
       setLoading(true);
       try {
-        const res = await fetch('http://localhost:3001/api/create-room', { method: 'POST' });
+        const body = {
+          name: `${username}'s Arena`,
+          mode: 'short',
+          privacy: 'open',
+          ai_difficulty: 'medium',
+          max_founders: 4,
+          max_investors: 2,
+          avatar_id: 1,
+          display_name: username
+        };
+        const res = await fetch(`${BACKEND_URL}/api/lobby/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(body)
+        });
         const data = await res.json();
-        onJoin(data.roomId, username, role);
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to create room');
+        }
+        onJoin(data.data.id, username, role);
       } catch (e) {
         console.error(e);
-        alert('Failed to create room');
+        alert(e.message || 'Failed to create room');
       } finally {
         setLoading(false);
       }
@@ -42,21 +66,18 @@ export default function Lobby({ onJoin, existingRoomId }) {
         
         <div className="w-full flex flex-col gap-2">
           <label className="text-xs uppercase tracking-widest text-[#a4d8c2]">Your Name</label>
-          <input 
-            type="text" 
-            value={username} 
-            onChange={e => setUsername(e.target.value)}
-            className="w-full bg-black/50 border border-[#1c4d3d] rounded p-3 text-white focus:outline-none focus:border-[#55ffb0] transition-colors font-mono"
-          />
+          <div className="w-full bg-black/30 border border-[#1c4d3d]/50 rounded p-3 text-white/80 font-mono select-none">
+            {username}
+          </div>
         </div>
 
         <div className="w-full flex flex-col gap-2">
           <label className="text-xs uppercase tracking-widest text-[#a4d8c2]">Select Role</label>
           <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-white text-sm cursor-pointer">
+            <label className="flex items-center gap-2 text-white text-sm cursor-pointer select-none">
               <input type="radio" name="role" value="Founder" checked={role === 'Founder'} onChange={() => setRole('Founder')} className="accent-[#55ffb0]" /> Founder
             </label>
-            <label className="flex items-center gap-2 text-white text-sm cursor-pointer">
+            <label className="flex items-center gap-2 text-white text-sm cursor-pointer select-none">
               <input type="radio" name="role" value="Investor" checked={role === 'Investor'} onChange={() => setRole('Investor')} className="accent-[#55ffb0]" /> Investor
             </label>
           </div>

@@ -2,8 +2,7 @@ import jwt from "jsonwebtoken";
 import { JwtPayload } from "../types/auth.types";
 
 function getSecret(): string {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET environment variable is not set.");
+  const secret = process.env.JWT_SECRET ?? "default_jwt_secret_for_local_development_only_min_64_chars_long_and_secure";
   return secret;
 }
 

@@ -4,7 +4,11 @@
  */
 
 const BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+  process.env.NEXT_PUBLIC_API_URL !== undefined
+    ? process.env.NEXT_PUBLIC_API_URL
+    : (typeof window !== "undefined" && window.location.port === "3000"
+        ? "http://localhost:3001"
+        : "")
 ).replace(/\/$/, "");
 
 /** Public API base, e.g. for building absolute <img> URLs to served avatars. */
@@ -42,6 +46,13 @@ export async function request<T>(
   const json = await res.json() as { success: boolean; message?: string; data?: T };
 
   if (!res.ok || !json.success) {
+    if (res.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("mm_token");
+        localStorage.removeItem("mm_user");
+        window.location.href = `/login?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+      }
+    }
     throw new ApiError(res.status, json.message ?? "Request failed.");
   }
 

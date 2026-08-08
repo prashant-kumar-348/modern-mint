@@ -271,7 +271,8 @@ async function insertPlayer(
     [roomId, userId]
   );
   if (alreadyIn.rowCount && alreadyIn.rowCount > 0) {
-    throw { status: 409, message: "You are already in this room." };
+    // Already in room, allow proceeding/reconnecting without error
+    return;
   }
 
   // Count current human players in the requested role

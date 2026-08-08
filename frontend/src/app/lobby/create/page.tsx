@@ -313,7 +313,7 @@ export default function CreateGamePage() {
         display_name:  username,
       });
 
-      router.push(`/lobby/join/${room.id}`);
+      router.push(`/room/${room.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to create room.");
       setStarting(false);

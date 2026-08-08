@@ -1,6 +1,6 @@
 "use client";
-
-import { useState } from "react";
+ 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -18,6 +18,12 @@ import PageBackground from "@/components/PageBackground";
 export default function LoginPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [redirectTo, setRedirectTo] = useState("");
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    setRedirectTo(searchParams.get("redirectTo") || "");
+  }, []);
 
   const {
     register,
@@ -30,7 +36,8 @@ export default function LoginPage() {
     try {
       const result = await authApi.login({ email: data.email, password: data.password });
       setSession(result.token, result.user);
-      router.push("/lobby");
+
+      router.push(redirectTo || "/lobby");
     } catch (err) {
       if (err instanceof ApiError) {
         setServerError(err.message);
@@ -156,7 +163,7 @@ export default function LoginPage() {
           >
             New commander?{" "}
             <Link
-              href="/signup"
+              href={`/signup?redirectTo=${encodeURIComponent(redirectTo)}`}
               className="font-bold transition-colors duration-150"
               style={{ color: "var(--teal)" }}
               onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--gold)")}

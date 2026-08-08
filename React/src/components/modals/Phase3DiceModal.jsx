@@ -52,6 +52,88 @@ export default function Phase3DiceModal({ onClose, player, sendAction, gameState
   
   const diceRef = useRef();
 
+  const getCalculationBreakdown = () => {
+    if (bestRoll === null) return { companies: [], grandTotal: 0 };
+    const roll = bestRoll;
+    let grandTotal = 0;
+    
+    const companies = (player?.ownedCompanies || []).map(c => {
+      const getCompanyData = (name) => {
+        if (!name) return [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]];
+        const upper = name.toUpperCase().trim();
+        const foundKey = Object.keys(companyDataMap).find(k => k.toUpperCase().trim() === upper);
+        return foundKey ? companyDataMap[foundKey] : [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]];
+      };
+      
+      const companyDataRows = getCompanyData(c.name);
+      const stageIndex = (c.stage === 'L' || c.stage === 0) ? 0 : (c.stage === 'R' || c.stage === 1) ? 1 : (c.stage === 'G' || c.stage === 2) ? 2 : 3;
+      const baseRev = (companyDataRows[stageIndex] || [0, 0, 0, 0])[1];
+      
+      // Sharing Players Check
+      let sharingPlayers = 0;
+      (gameState?.players || []).forEach(otherP => {
+         const theirComp = otherP.ownedCompanies?.find(tc => tc.name?.toUpperCase().trim() === c.name?.toUpperCase().trim());
+         if (theirComp) {
+           const otherStageIdx = (theirComp.stage === 'L' || theirComp.stage === 0) ? 0 : (theirComp.stage === 'R' || theirComp.stage === 1) ? 1 : (theirComp.stage === 'G' || theirComp.stage === 2) ? 2 : 3;
+           if (otherStageIdx === stageIndex) {
+              sharingPlayers += 1;
+           }
+         }
+      });
+      
+      // PR Services Double Effect
+      const hasPR = c.prBoughtRound === gameState?.round;
+      const activeProjectedRev = hasPR ? baseRev * 2 : baseRev;
+      
+      // Divided Rev
+      const dividedRev = sharingPlayers > 1 ? Math.floor(activeProjectedRev / sharingPlayers) : activeProjectedRev;
+      
+      // Multiplier Lookup
+      const teamIndex = (c.team === 'RN' || player.color === '#ef4444') ? 0 :
+                        (c.team === 'GT' || player.color === '#55ffb0') ? 1 :
+                        (c.team === 'GD' || player.color === '#d4af37') ? 2 : 3;
+      const multi = multiplierTable[roll]?.[teamIndex] ?? 1;
+      
+      // Actual Revenue
+      const actualRevenue = dividedRev * multi;
+      let finalRevenue = actualRevenue;
+      
+      // Royalty Cuts
+      let royaltyPercentage = 0;
+      let royaltyCut = 0;
+      if (gameState?.royaltyAgreements) {
+         gameState.royaltyAgreements.forEach(agreement => {
+            if (agreement.founderId === player.id && agreement.companyName?.toUpperCase().trim() === c.name?.toUpperCase().trim()) {
+               royaltyPercentage = agreement.percentage;
+               royaltyCut = Math.floor((actualRevenue * agreement.percentage) / 100);
+               finalRevenue -= royaltyCut;
+            }
+         });
+      }
+      
+      grandTotal += finalRevenue;
+      
+      return {
+        name: c.customName || c.name,
+        icon: c.icon || '🏢',
+        stageName: ["Launch", "Retain", "Grow", "Scale"][stageIndex],
+        baseRev,
+        hasPR,
+        sharingPlayers,
+        dividedRev,
+        multi,
+        actualRevenue,
+        royaltyPercentage,
+        royaltyCut,
+        finalRevenue
+      };
+    });
+    
+    return { companies, grandTotal };
+  };
+
+  const { companies: breakdownCompanies, grandTotal } = getCalculationBreakdown();
+
   useEffect(() => {
     const handleInitialResult = (e) => {
       const { roll } = e.detail;
@@ -357,6 +439,48 @@ export default function Phase3DiceModal({ onClose, player, sendAction, gameState
                       })
                     )}
                   </div>
+
+                  {/* Calculation and Earnings Summary Box */}
+                  {bestRoll !== null && (
+                    <div className="mt-4 border-t border-[#1c4d3d] pt-4 flex flex-col gap-2 pointer-events-auto">
+                      <h4 className="text-[#FFC240] font-black uppercase tracking-wider text-[11px] mb-2 flex items-center justify-between">
+                        <span>ESTIMATED ROUND REVENUE</span>
+                        <span className="text-[10px] text-white/50 lowercase font-normal">(based on Roll {bestRoll})</span>
+                      </h4>
+                      
+                      <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto pr-1">
+                        {breakdownCompanies.map((item, i) => (
+                          <div key={i} className="flex flex-col bg-[#112a20]/60 border border-[#1c4d3d] rounded-lg p-2 text-[10px] text-white/80 leading-relaxed font-sans">
+                            <div className="flex justify-between items-center mb-1 font-bold text-white">
+                              <span className="flex items-center gap-1">
+                                <span>{item.icon}</span>
+                                <span>{item.name} ({item.stageName})</span>
+                              </span>
+                              <span className={item.finalRevenue < 0 ? "text-[#ff5555]" : "text-[#55ffb0]"}>
+                                {item.finalRevenue >= 0 ? `+$${item.finalRevenue}K` : `-$${Math.abs(item.finalRevenue)}K`}
+                              </span>
+                            </div>
+                            
+                            <div className="text-[9px] text-[#a4d8c2] flex flex-wrap gap-x-2 gap-y-0.5 border-t border-[#1c4d3d]/50 pt-1 mt-0.5">
+                              <span>Base: ${item.baseRev}K</span>
+                              {item.hasPR && <span className="text-[#FFC240]">PR: x2</span>}
+                              {item.sharingPlayers > 1 && <span className="text-[#ff5555]">Shared: /{item.sharingPlayers} (${item.dividedRev}K)</span>}
+                              <span>Multi: <span className={item.multi < 0 ? "text-[#ff5555]" : "text-[#55ffb0]"}>{item.multi > 0 ? `+${item.multi}` : item.multi}</span></span>
+                              {item.royaltyPercentage > 0 && <span className="text-[#d4af37]">Royalty: -${item.royaltyCut}K ({item.royaltyPercentage}%)</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Grand Total Bar */}
+                      <div className="mt-2 bg-[#1c4d3d]/40 rounded-xl p-3 border border-[#55ffb0]/25 flex items-center justify-between">
+                        <span className="text-white text-xs font-black uppercase tracking-widest">Total Earnings:</span>
+                        <span className={`text-xl font-black ${grandTotal < 0 ? "text-[#ff5555] drop-shadow-[0_0_10px_rgba(255,85,85,0.4)]" : "text-[#55ffb0] drop-shadow-[0_0_10px_rgba(85,255,176,0.4)]"}`}>
+                          {grandTotal >= 0 ? `+$${grandTotal}K` : `-$${Math.abs(grandTotal)}K`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

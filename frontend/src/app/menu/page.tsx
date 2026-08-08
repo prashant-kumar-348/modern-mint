@@ -126,6 +126,13 @@ function MenuItem({
 /* ── Page ────────────────────────────────────────────────────────────────── */
 export default function MainMenu() {
   const router = useRouter();
+  const handleLogout = () => {
+    // Clear stored auth data and redirect to login
+    import('@/lib/auth').then(module => {
+      module.clearSession?.();
+      router.replace('/login');
+    });
+  };
 
   function handle(action: string) {
     if (action === "auth") {
@@ -139,6 +146,16 @@ export default function MainMenu() {
   return (
     <div className="relative flex h-full min-h-screen overflow-hidden">
       <PageBackground />
+        {/* Logout button – top‑right corner */}
+        <button
+          onClick={handleLogout}
+          className="absolute top-4 right-4 text-xs uppercase tracking-widest font-bold transition-colors duration-150"
+          style={{ color: 'var(--text-faint)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-faint)')}
+        >
+          Logout
+        </button>
 
       <div className="flex flex-col lg:flex-row w-full">
         {/* ── LEFT — Brand panel ───────────────────────────────────────── */}

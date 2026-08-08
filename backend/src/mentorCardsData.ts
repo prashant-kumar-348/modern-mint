@@ -1,4 +1,12 @@
-const mentorCards = [
+export interface MentorCard {
+  id: number;
+  name: string;
+  type: "PLAY NOW" | "PLAY ANYTIME";
+  description: string;
+  effectType: string;
+}
+
+const mentorCards: MentorCard[] = [
   { "id": 1, "name": "INDUSTRY TITAN MENTOR", "type": "PLAY NOW", "description": "A business giant steps in. Choose 1 company and advance it 1 stage (Launch, Grow, Scale, etc). Costs nothing this time!", "effectType": "free_stage_up" },
   { "id": 2, "name": "STAR POWER", "type": "PLAY NOW", "description": "A celebrity shout-out boosts sales. After the dice roll, add +1 to your company's multiplier this round.", "effectType": "add_multiplier" },
   { "id": 3, "name": "CLIENT MENTOR MAGIC", "type": "PLAY NOW", "description": "Mentor turns into a paying client. Advance 1 company up 1 stage for free OR immediately gain 10k.", "effectType": "free_stage_or_cash" },
@@ -37,6 +45,6 @@ const mentorCards = [
   { "id": 36, "name": "MINDSET BLOCK", "type": "PLAY NOW", "description": "Self-doubt slows you down. You miss your next turn.", "effectType": "miss_turn" }
 ];
 
-module.exports = {
-  generateMentorDeck: () => [...mentorCards]
-};
+export function generateMentorDeck(): MentorCard[] {
+  return [...mentorCards];
+}

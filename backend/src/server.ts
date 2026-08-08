@@ -2,6 +2,8 @@ import "dotenv/config";
 import app from "./app";
 import pool from "./config/database";
 import { runMigrations } from "./config/migrate";
+import http from "http";
+import { setupSocket } from "./socket";
 
 const PORT = Number(process.env.PORT ?? 5000);
 
@@ -21,10 +23,15 @@ async function start() {
     process.exit(1);
   }
 
-  app.listen(PORT, () => {
-    console.log(`[Server] Modern Mint API running on http://localhost:${PORT}`);
+  const httpServer = http.createServer(app);
+  // Attach Socket.io server
+  setupSocket(httpServer);
+
+  httpServer.listen(PORT, "0.0.0.0", () => {
+    console.log(`[Server] Modern Mint API running on http://0.0.0.0:${PORT}`);
     console.log(`[Server] Environment: ${process.env.NODE_ENV ?? "development"}`);
   });
 }
 
 start();
+

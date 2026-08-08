@@ -29,6 +29,7 @@ import MiddleBoard from './components/board/MiddleBoard';
 import { GameProvider } from './context/GameContext';
 import { useMultiplayer } from './hooks/useMultiplayer';
 import Lobby from './components/Lobby';
+import Auth from './components/Auth';
 import VoiceChatManager from './components/VoiceChatManager';
 import Phase2Dashboard from './components/board/Phase2Dashboard';
 import Phase2Manager from './components/board/Phase2Manager';
@@ -78,6 +79,47 @@ const getCompanyShortName = (name) => {
   return upper.split(' ')[0];
 };
 
+const getLaunchedCompanyForMessage = (message) => {
+  if (!message) return null;
+  const msgUpper = message.toUpperCase();
+  if (!msgUpper.includes("LAUNCHED")) return null;
+  
+  const baseCompanies = [
+    { name: 'Wallet', icon: '👛', image: '/company-wallet.png' },
+    { name: 'Quick Commerce', icon: '🛒', image: '/company-quick-commerce.png' },
+    { name: 'Snacks', icon: '🍿', image: '/company-snacks.png' },
+    { name: 'Restro - Chain', icon: '🍽️', image: '/company-restro-chain.png' },
+    { name: 'Contract Farming', icon: '🌾', image: '/company-contract-farming.png' }, 
+    { name: 'Agri IoT', icon: '📡', image: '/company-agri-iot.png' }, 
+    { name: 'Smart Storage', icon: '📦', image: '/company-smart-storage.png' }, 
+    { name: 'Robo - Packaging', icon: '🤖', image: '/company-robo-packaging.png' }, 
+    { name: 'Traceability', icon: '🔗', image: '/company-traceability.png' },
+  ];
+
+  const match = baseCompanies.find(comp => {
+    const cleanCompName = comp.name.toUpperCase().replace(/[^A-Z]/g, '');
+    const cleanMsg = msgUpper.replace(/[^A-Z]/g, '');
+    return cleanMsg.includes(cleanCompName);
+  });
+  
+  return match || null;
+};
+
+const getCompanyLogoImage = (name) => {
+  if (!name) return '/company-wallet.png';
+  const upper = name.toUpperCase().trim();
+  if (upper.includes("FARM")) return '/company-contract-farming.png';
+  if (upper.includes("IOT")) return '/company-agri-iot.png';
+  if (upper.includes("WALLET")) return '/company-wallet.png';
+  if (upper.includes("SNACK")) return '/company-snacks.png';
+  if (upper.includes("COMM")) return '/company-quick-commerce.png';
+  if (upper.includes("STOR")) return '/company-smart-storage.png';
+  if (upper.includes("RESTRO") || upper.includes("CHAIN")) return '/company-restro-chain.png';
+  if (upper.includes("TRACE")) return '/company-traceability.png';
+  if (upper.includes("ROBO") || upper.includes("PACK")) return '/company-robo-packaging.png';
+  return '/company-wallet.png';
+};
+
 function App() {
   const [activeModal, setActiveModal] = useState(null); 
   // 'deal', 'topup', 'mentor', 'team_action', 'pe_fund', 'phaseEnd'
@@ -114,6 +156,10 @@ function App() {
     4: { launched: false, logo: '🚚', stage: 'S', teamColor: 'from-blue-400 to-blue-600' }
   });
 
+  const [token, setToken] = useState(() => {
+    return sessionStorage.getItem('modernmint_token') || '';
+  });
+
   const [roomId, setRoomId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('room');
@@ -125,10 +171,10 @@ function App() {
       safeSessionStorage.setItem('modernmint_username', urlUsername);
       return urlUsername;
     }
-    return safeSessionStorage.getItem('modernmint_username') || '';
+    return sessionStorage.getItem('modernmint_username') || '';
   });
   const [role, setRole] = useState(() => {
-    return safeSessionStorage.getItem('modernmint_role') || 'Founder';
+    return sessionStorage.getItem('modernmint_role') || 'Founder';
   });
 
   console.log("App Render Context:", { roomId, username, search: window.location.search });
@@ -206,13 +252,28 @@ function App() {
     };
   }, [sendAction]);
 
-  // If no room is joined, or no username is selected, show Lobby
-  if (!roomId || !username) {
+  // If not authenticated, show Auth screen first
+  if (!token) {
+    return (
+      <Auth 
+        onLoginSuccess={(t, u) => {
+          setToken(t);
+          setUsername(u.username);
+        }} 
+      />
+    );
+  }
+
+  // If no room is joined, show Lobby
+  if (!roomId) {
     return (
       <Lobby 
         existingRoomId={roomId} 
-        onJoin={(id, name) => { 
-          safeSessionStorage.setItem('modernmint_username', name);
+        token={token}
+        onJoin={(id, name, pRole) => { 
+          sessionStorage.setItem('modernmint_username', name);
+          sessionStorage.setItem('modernmint_role', pRole);
+          setRole(pRole);
           setRoomId(id); 
           setUsername(name); 
           
@@ -430,13 +491,27 @@ function App() {
         </div>
 
         {/* MASSIVE GOLDEN NOTIFICATION BANNER */}
-        {notification.show && (
-          <div className="absolute top-[45%] left-0 w-full bg-gradient-to-r from-[#F59E0B] via-[#FBBF24] to-[#F59E0B] py-6 z-[100] shadow-[0_0_40px_rgba(245,158,11,0.4)] border-y-2 border-white/40 flex items-center justify-center animate-in zoom-in-y duration-300 pointer-events-none">
-            <h1 className="text-white text-2xl md:text-4xl font-black uppercase tracking-[0.2em] drop-shadow-lg text-center px-4">
-              {notification.message}
-            </h1>
-          </div>
-        )}
+        {notification.show && (() => {
+          const matchedCompany = getLaunchedCompanyForMessage(notification.message);
+          return (
+            <div className="absolute top-[45%] left-0 w-full bg-gradient-to-r from-[#F59E0B] via-[#FBBF24] to-[#F59E0B] py-6 z-[100] shadow-[0_0_40px_rgba(245,158,11,0.4)] border-y-2 border-white/40 flex items-center justify-center animate-in zoom-in-y duration-300 pointer-events-none">
+              <div className="flex items-center justify-center gap-6 md:gap-10 px-8">
+                {matchedCompany && (
+                  <div className="w-24 h-24 md:w-36 md:h-36 flex items-center justify-center shrink-0 -my-12 relative z-[110]">
+                     <img 
+                       src={matchedCompany.image} 
+                       alt={matchedCompany.name} 
+                       className="w-[200%] h-[200%] max-w-none object-contain drop-shadow-[0_20px_25px_rgba(0,0,0,0.85)] animate-[bounce_3.5s_infinite] -translate-y-6" 
+                     />
+                  </div>
+                )}
+                <h1 className="text-white text-xl md:text-3xl lg:text-4xl font-black uppercase tracking-[0.15em] drop-shadow-lg text-center select-none max-w-3xl leading-tight">
+                  {notification.message}
+                </h1>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 3D WebGL Canvas Background Layer */}
         <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
@@ -537,8 +612,8 @@ function App() {
                             {player.ownedCompanies.length > 0 ? (
                               player.ownedCompanies.map((c, i) => (
                                 <div key={i} className="flex items-center justify-between w-full">
-                                  <div className="text-[20px] filter drop-shadow-md leading-none">
-                                    {c.icon || '🏢'}
+                                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                                    <img src={getCompanyLogoImage(c.name)} alt={c.name} className="w-full h-full object-contain filter drop-shadow-md select-none" />
                                   </div>
                                   <div className="w-[22px] h-[22px] bg-[#4B7981]/40 border border-[#64969E]/50 rounded-[3px] flex items-center justify-center text-white text-[11px] font-normal shadow-sm backdrop-blur-sm">
                                     {c.stage}
@@ -610,7 +685,7 @@ function App() {
                               <div key={idx} className="grid grid-cols-[1.2fr_1fr_1.1fr_1fr_1fr] items-center text-center font-sans border-b border-[#b87333]/20 last:border-0 hover:bg-white/5 transition-colors">
                                 <div className="border-r border-[#b87333]/20 py-1.5 flex flex-col items-center justify-center">
                                   <div className="flex items-center gap-1.5 relative">
-                                    <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] leading-none select-none">{c.icon || '🏢'}</span>
+                                    <img src={getCompanyLogoImage(c.name)} alt={c.name} className="w-8 h-8 object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] select-none shrink-0" />
                                     <div className="flex flex-col gap-0.5 items-start">
                                       <span className="bg-[#571717] text-white text-[6px] font-black px-1 py-0.5 rounded-[2px] uppercase tracking-wider leading-none">{c.stage}</span>
                                       <div className="w-3.5 h-3.5 rounded-full bg-gray-600/80 border border-white/20 flex items-center justify-center text-[6px] font-black text-white leading-none">
@@ -668,17 +743,35 @@ function App() {
             
             {/* Bottom-Left: Trackers */}
             <div className="absolute left-6 bottom-4 pointer-events-auto flex flex-col gap-3">
-              <div 
-                onClick={() => setActiveModal('dealSheets')}
-                className="bg-gradient-to-r from-black to-[#397564] border border-white/5 rounded-[10px] px-4 w-[214px] h-[42px] flex items-center justify-between shadow-[0_4px_12px_rgba(0,0,0,0.4)] cursor-pointer hover:opacity-90 transition-opacity"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white">Deal Tracker</span>
-                <span className="text-[40px] font-black bg-gradient-to-b from-white to-[#FFC240] bg-clip-text text-transparent leading-none select-none">{localDealCount}</span>
-              </div>
-              <div className="bg-gradient-to-r from-black to-[#397564] border border-white/5 rounded-[10px] px-4 w-[214px] h-[42px] flex items-center justify-between shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white">Action Tracker</span>
-                <span className="text-[40px] font-black bg-gradient-to-b from-white to-[#FFC240] bg-clip-text text-transparent leading-none select-none">{localActionCount}</span>
-              </div>
+              {gamePhase === 1 ? (
+                <>
+                  <div 
+                    onClick={() => setActiveModal('dealSheets')}
+                    className="bg-gradient-to-r from-black to-[#397564] border border-white/5 rounded-[10px] px-4 w-[214px] h-[42px] flex items-center justify-between shadow-[0_4px_12px_rgba(0,0,0,0.4)] cursor-pointer hover:opacity-90 transition-opacity"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white">Deal Tracker</span>
+                    <span className="text-[40px] font-black bg-gradient-to-b from-white to-[#FFC240] bg-clip-text text-transparent leading-none select-none">{localDealCount}</span>
+                  </div>
+                  <div className="bg-gradient-to-r from-black to-[#397564] border border-white/5 rounded-[10px] px-4 w-[214px] h-[42px] flex items-center justify-between shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white">Action Tracker</span>
+                    <span className="text-[40px] font-black bg-gradient-to-b from-white to-[#FFC240] bg-clip-text text-transparent leading-none select-none">{localActionCount}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-gradient-to-r from-black to-[#397564] border border-white/5 rounded-[10px] px-4 w-[214px] h-[42px] flex items-center justify-between shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white">Action Tracker</span>
+                    <span className="text-[40px] font-black bg-gradient-to-b from-white to-[#FFC240] bg-clip-text text-transparent leading-none select-none">{localActionCount}</span>
+                  </div>
+                  <div 
+                    onClick={() => setActiveModal('dealSheets')}
+                    className="bg-gradient-to-r from-black to-[#397564] border border-white/5 rounded-[10px] px-4 w-[214px] h-[42px] flex items-center justify-between shadow-[0_4px_12px_rgba(0,0,0,0.4)] cursor-pointer hover:opacity-90 transition-opacity"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white">Deal Tracker</span>
+                    <span className="text-[40px] font-black bg-gradient-to-b from-white to-[#FFC240] bg-clip-text text-transparent leading-none select-none">{localDealCount}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Desk Element 1: Launch Status List */}
@@ -1122,7 +1215,15 @@ function App() {
             )}
 
             {activeModal === 'mentorInventory' && (
-              <MentorInventoryModal onClose={() => setActiveModal(null)} mentorCards={localPlayer?.mentorCards || []} />
+              <MentorInventoryModal 
+                onClose={() => setActiveModal(null)} 
+                player={localPlayer}
+                players={gameState?.players || []}
+                onPlayCard={(cardId, targetPlayerId, companyName) => {
+                  sendAction('play_mentor_card', { cardId, targetPlayerId, companyName });
+                  setActiveModal(null);
+                }}
+              />
             )}
 
             {activeModal === 'phaseEnd' && (

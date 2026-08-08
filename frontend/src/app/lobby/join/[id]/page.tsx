@@ -65,8 +65,27 @@ export default function JoinGamePage({
   const [role,      setRole]      = useState<PlayerRole>("founder");
   const [name,      setName]      = useState("");
   const [avatarId,  setAvatarId]  = useState<number | null>(FOUNDER_AVATARS[0].id);
+  const [password,  setPassword]  = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem(`mm_room_pw_${id}`) || "";
+    }
+    return "";
+  });
   const [starting,  setStarting]  = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [copied,    setCopied]    = useState(false);
+
+  const handleShareRoom = () => {
+    const inviteLink = `${window.location.origin}/lobby/join/${id}`;
+    navigator.clipboard.writeText(inviteLink)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy link:", err);
+      });
+  };
 
   // Display name comes from the signed-in user (no visible input, per Figma).
   useEffect(() => {
@@ -113,17 +132,19 @@ export default function JoinGamePage({
     setStarting(true);
 
     try {
-      // Password rooms are already authenticated in the lobby — reuse the password
-      // that was entered there (stored in sessionStorage), no second prompt here.
       if (room?.privacy === "password") {
         const storedPw =
           (typeof window !== "undefined" && sessionStorage.getItem(`mm_room_pw_${id}`)) || "";
+        const finalPw = password.trim() || storedPw;
         await joinRoomWithPassword(id, {
           role,
           avatar_id:    avatarId,
           display_name: name.trim(),
-          password:     storedPw,
+          password:     finalPw,
         });
+        if (typeof window !== "undefined" && finalPw) {
+          sessionStorage.setItem(`mm_room_pw_${id}`, finalPw);
+        }
       } else {
         await joinRoom(id, {
           role,
@@ -131,8 +152,7 @@ export default function JoinGamePage({
           display_name: name.trim(),
         });
       }
-      // In production: navigate to game scene / Unity bridge
-      router.push("/menu");
+      router.push(`/room/${id}`);
     } catch (err) {
       setJoinError(
         err instanceof ApiError ? err.message : "Failed to join room."
@@ -257,6 +277,22 @@ export default function JoinGamePage({
                       </>
                     )}
                   </div>
+
+                  {/* Invite Friends Button */}
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={handleShareRoom}
+                      className="text-[10px] font-black uppercase tracking-[0.25em] px-5 py-2.5 rounded-full cursor-pointer hover:bg-[#55ffb0]/15 transition-all flex items-center gap-2 active:scale-95 shadow-[0_4px_12px_rgba(85,255,176,0.05)]"
+                      style={{
+                        color: copied ? "#22c462" : "#55ffb0",
+                        border: `1.5px solid ${copied ? "rgba(34,196,98,0.5)" : "rgba(85,255,176,0.35)"}`,
+                        background: "rgba(17,42,34,0.25)",
+                        backdropFilter: "blur(4px)",
+                      }}
+                    >
+                      {copied ? "✓ Link Copied!" : "🔗 Invite Friends"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Two large role cards */}
@@ -304,10 +340,24 @@ export default function JoinGamePage({
 
                 {/* Join — directly beneath the avatar section, centered */}
                 <div className="mt-auto pt-8 w-full flex flex-col items-center gap-2">
+                  {room.privacy === "password" && (
+                    <div className="w-full mb-3 flex flex-col gap-1.5 items-stretch">
+                      <label className="text-[10px] font-black uppercase tracking-[0.25em] text-center" style={{ color: "var(--gold)" }}>
+                        Room Password
+                      </label>
+                      <input 
+                        type="password"
+                        placeholder="Enter password..."
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-[#112a22]/80 text-white placeholder-white/30 p-2.5 rounded-xl border border-[#55ffb0]/30 outline-none focus:border-[#55ffb0] font-sans text-sm text-center"
+                      />
+                    </div>
+                  )}
                   <Button
                     size="lg"
                     loading={starting}
-                    disabled={!name.trim() || !avatarId}
+                    disabled={!name.trim() || !avatarId || (room.privacy === "password" && !password.trim())}
                     onClick={handleStart}
                   >
                     ▶ Join
