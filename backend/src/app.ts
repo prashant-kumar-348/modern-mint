@@ -1,80 +1,68 @@
 import express from "express";
 import cors from "cors";
-import { request as httpRequest } from "http";
 import { errorHandler } from "./middleware/error.middleware";
 import apiRoutes from "./routes/index";
 
 const app = express();
 
 // ── CORS ───────────────────────────────────────────────────────────────────
-// FRONTEND_URL may be a comma-separated list to support multiple origins
-// e.g.  FRONTEND_URL=https://modernmint.vercel.app,http://localhost:3000
+
+const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(
-  cors((req, callback) => {
-    const origin = req.header("Origin");
-    const host = req.header("Host");
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no Origin header
+      // Example: Postman, server-to-server requests
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
 
-    const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:3000")
-      .split(",")
-      .map((o) => o.trim())
-      .filter(Boolean);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
 
-    const isSameOrigin = origin && host && (origin === `http://${host}` || origin === `https://${host}`);
+      callback(
+        Object.assign(
+          new Error(`CORS policy: origin ${origin} is not allowed.`),
+          { status: 403 }
+        )
+      );
+    },
 
-    if (!origin || allowedOrigins.includes(origin) || isSameOrigin) {
-      callback(null, {
-        origin: true,
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-      });
-    } else {
-      const err = Object.assign(new Error(`CORS policy: origin ${origin} is not allowed.`), { status: 403 });
-      callback(err);
-    }
+    credentials: true,
+
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 // ── Body parsers ───────────────────────────────────────────────────────────
+
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// ── Routes ────────────────────────────────────────────────────────────────
+// ── API Routes ─────────────────────────────────────────────────────────────
+
 app.use("/api", apiRoutes);
 
-// ── Next.js Proxy ──────────────────────────────────────────────────────────
-app.use((req, res, next) => {
-  if (req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
-    return next();
-  }
+// ── 404 ────────────────────────────────────────────────────────────────────
 
-  const options = {
-    hostname: "127.0.0.1",
-    port: 3000,
-    path: req.url,
-    method: req.method,
-    headers: req.headers,
-  };
-
-  const proxyReq = httpRequest(options, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
-    proxyRes.pipe(res, { end: true });
-  });
-
-  proxyReq.on("error", (err) => {
-    console.error("[Proxy Error] Next.js is unreachable:", err.message);
-    res.status(502).send("Frontend server (Next.js) is starting up or unreachable. Please refresh in a moment.");
-  });
-
-  req.pipe(proxyReq, { end: true });
-});
-
-// ── 404 catch-all ─────────────────────────────────────────────────────────
 app.use((_req, res) => {
-  res.status(404).json({ success: false, message: "Route not found." });
+  res.status(404).json({
+    success: false,
+    message: "Route not found.",
+  });
 });
 
-// ── Global error handler (must be last) ───────────────────────────────────
+// ── Global error handler ───────────────────────────────────────────────────
+
 app.use(errorHandler);
 
 export default app;
