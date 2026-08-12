@@ -9,7 +9,6 @@ const app = express();
 
 const allowedOrigins = [
   "https://modern-mint.vercel.app",
-  "https://modern-mint-qr3v0xy29-prashant28.vercel.app",
   "http://localhost:3000",
   "http://localhost:5173",
 ];
@@ -17,13 +16,25 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests without an Origin header
+      // Allow requests without Origin
       if (!origin) {
         callback(null, true);
         return;
       }
 
+      // Allow production Vercel URL
       if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      // Allow all ModernMint Vercel preview deployments
+      const isModernMintVercelPreview =
+        /^https:\/\/modern-mint-[a-z0-9-]+-prashant28\.vercel\.app$/i.test(
+          origin
+        );
+
+      if (isModernMintVercelPreview) {
         callback(null, true);
         return;
       }
@@ -38,9 +49,19 @@ app.use(
 
     credentials: true,
 
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
 
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
   })
 );
 
