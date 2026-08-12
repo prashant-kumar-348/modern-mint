@@ -7,16 +7,17 @@ const app = express();
 
 // ── CORS ───────────────────────────────────────────────────────────────────
 
-const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:3000")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins = [
+  "https://modern-mint.vercel.app",
+  "https://modern-mint-qr3v0xy29-prashant28.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no Origin header
-      // Example: Postman, server-to-server requests
+      // Allow requests without an Origin header
       if (!origin) {
         callback(null, true);
         return;
