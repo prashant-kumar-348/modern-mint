@@ -6,9 +6,7 @@
 const BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL !== undefined
     ? process.env.NEXT_PUBLIC_API_URL
-    : (typeof window !== "undefined" && window.location.port === "3000"
-        ? "http://localhost:3001"
-        : "")
+    : ""
 ).replace(/\/$/, "");
 
 /** Public API base, e.g. for building absolute <img> URLs to served avatars. */
