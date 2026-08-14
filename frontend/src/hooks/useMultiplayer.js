@@ -1,11 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const BACKEND_URL = (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_API_URL) || (
-  typeof window !== 'undefined' && window.location.port === '3000'
-    ? 'http://localhost:3001'
-    : ''
-);
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://modernmint-backend.onrender.com";
 
 export function useMultiplayer(roomId, username, role, avatarId) {
   const [gameState, setGameState] = useState(null);
@@ -18,7 +16,10 @@ export function useMultiplayer(roomId, username, role, avatarId) {
   useEffect(() => {
     if (!roomId || !username) return;
  
-    socketRef.current = io(BACKEND_URL);
+    socketRef.current = io(BACKEND_URL, {
+  transports: ["websocket", "polling"],
+  withCredentials: true,
+});
  
     socketRef.current.on('connect', () => {
       console.log('Connected to multiplayer server', socketRef.current.id);
