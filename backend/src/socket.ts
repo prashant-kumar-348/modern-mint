@@ -3,6 +3,7 @@ import { Server as HttpServer } from "http";
 import { generateMentorDeck, MentorCard } from "./mentorCardsData";
 import { generateEventDeck, EventCard } from "./eventCardsData";
 
+
 // In-memory game rooms dictionary
 const rooms: Record<string, any> = {};
 
@@ -119,24 +120,47 @@ const createEmptyRoom = () => {
 };
 
 export function setupSocket(server: HttpServer): SocketServer {
-  const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:3000")
+
+  const allowedOrigins = (process.env.FRONTEND_URL ?? "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
 
-  const io = new SocketServer(server, {
-    cors: {
-      origin: (origin, callback) => {
-        const isLocal = origin && (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:") || origin === "http://localhost" || origin === "http://127.0.0.1");
-        if (!origin || allowedOrigins.includes(origin) || isLocal || process.env.NODE_ENV !== "production") {
-          callback(null, true);
-        } else {
-          callback(new Error("Not allowed by CORS"));
-        }
-      },
-      methods: ["GET", "POST"]
-    }
-  });
+const io = new SocketServer(server, {
+  cors: {
+    origin: (origin, callback) => {
+      // Allow requests without an Origin header
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      // Local development
+      const isLocal =
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:");
+
+      // Vercel deployments
+      const isVercel =
+        origin.endsWith(".vercel.app");
+
+      // Explicitly configured frontend URLs
+      const isAllowed =
+        allowedOrigins.includes(origin);
+
+      if (isLocal || isVercel || isAllowed) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Socket.IO CORS blocked: ${origin}`));
+    },
+
+    methods: ["GET", "POST"],
+
+    credentials: true,
+  },
+});
 
   const applyMentorCardEffect = (player: any, room: any, card: MentorCard, targetPlayerId: string, companyName: string, socket?: Socket) => {
     const effect = card.effectType;
