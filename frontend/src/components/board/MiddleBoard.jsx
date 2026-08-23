@@ -154,24 +154,12 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
           
           <div className="relative w-[550px] h-[550px] flex items-center justify-center">
             
-            {/* Background colorful radiant glow */}
-            <div className="absolute inset-[10%] rounded-full opacity-70 mix-blend-screen blur-3xl pointer-events-none"
-                 style={{
-                   background: 'conic-gradient(from 0deg, #5b75a6, #844c8c, #c05c5c, #89a868, #5b75a6)'
-                 }}
-            ></div>
-
-            {/* Outer Golden Rings */}
-            <div className="absolute inset-2 rounded-full border-[3px] border-[#c49a45] shadow-[0_0_30px_rgba(229,193,88,0.3)]"></div>
-            <div className="absolute inset-4 rounded-full border border-[#c49a45]/40"></div>
-            
-            {/* Inner Art Deco Golden Wheel */}
-            <div className="absolute inset-12 rounded-full border border-[#c49a45]/60 overflow-hidden">
-               {/* Decorative wheel spokes/patterns */}
-               <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{
-                 backgroundImage: `repeating-conic-gradient(from 0deg, transparent 0deg, transparent 15deg, #c49a45 15deg, #c49a45 16deg)`
-               }}></div>
-            </div>
+            {/* Center Board Circle (Golden wheel & segments) */}
+            <img 
+               src="/center-board.png" 
+               alt="Center Board Circle" 
+               className="absolute w-full h-full object-contain pointer-events-none drop-shadow-[0_0_30px_rgba(229,193,88,0.3)]"
+            />
 
             {/* Center Diamond with Skyline (Custom Image) */}
             <div onClick={onDeckClick} className="absolute z-20 flex items-center justify-center drop-shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-transform hover:scale-105 cursor-pointer pointer-events-auto">

@@ -351,10 +351,11 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
     setActiveModal(null);
   };
 
-  const submitDeal = (dealForm) => {
+  const submitDeal = (dealForm, partnerName) => {
+    const target = partnerName || dealTarget || 'Random Player';
     sendAction('propose_royalty_deal', { 
       proposerName: username,
-      partnerName: dealTarget || 'Random Player',
+      partnerName: target,
       cash: Number(dealForm.cash) || 0,
       equity: Number(dealForm.equity) || 0,
       loan: Number(dealForm.loan) || 0,
@@ -363,6 +364,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
     });
     setActiveModal(null);
     setDealTarget(null);
+    showGlobalNotification(`Deal Finalised With: ${target}`);
   };
 
   const isMyPhase1Turn = gamePhase === 1 && gameState?.players?.[gameState?.phase1TurnIndex || 0]?.name === username;
@@ -600,8 +602,10 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
                       onClick={() => setExpandedPlayerId(prev => prev === player.id ? null : player.id)}
                       className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 border-2 overflow-hidden bg-gray-900 transition-all cursor-pointer hover:opacity-95 select-none"
                       style={{ 
-                        borderColor: player.color,
-                        boxShadow: `0 0 10px ${player.color}80`
+                        borderColor: player.isLocked ? '#d4af37' : player.color,
+                        boxShadow: player.isLocked 
+                          ? '0 0 15px rgba(212, 175, 55, 0.9), inset 0 0 8px rgba(212, 175, 55, 0.4)' 
+                          : `0 0 10px ${player.color}80`
                       }}
                     >
                       {player.avatarId ? (
@@ -991,7 +995,11 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
                   <button
                     onClick={() => !isTurnLocked && setActiveModal('personaSelect')}
                     disabled={isTurnLocked}
-                    className={`px-6 py-2.5 rounded-xl bg-gradient-to-br from-[#2e8b57] to-[#1c5435] border border-[#55ffb0]/20 text-white font-semibold tracking-wide select-none cursor-pointer transition-all ${isTurnLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:from-[#3cb371] hover:to-[#228b22] hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(46,139,87,0.4)]'}`}
+                    className={`px-6 py-2.5 rounded-xl font-semibold tracking-wide select-none cursor-pointer transition-all h-[42px] flex items-center justify-center
+                      ${activeModal === 'personaSelect' || activeModal === 'deal'
+                        ? 'bg-gradient-to-br from-[#FFE885] via-[#d4af37] to-[#8a6818] border-2 border-white text-black shadow-[0_0_20px_rgba(212,175,55,0.8)] scale-105 font-black uppercase'
+                        : 'bg-gradient-to-br from-[#2e8b57] to-[#1c5435] border border-[#55ffb0]/20 text-white hover:from-[#3cb371] hover:to-[#228b22] hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(46,139,87,0.4)]'
+                      } ${isTurnLocked ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
                   >
                     Offer a Deal
                   </button>
@@ -1038,7 +1046,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
                  ) : (
                    <span className="drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)] leading-tight">
                      {gamePhase === 1 ? (
-                       <>END<br/>PHASE 1</>
+                       <>LOCK THE<br/>DEAL</>
                      ) : gamePhase === 2 ? (
                        <>END<br/>ACTIONS</>
                      ) : (
@@ -1127,56 +1135,14 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
         {activeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm pointer-events-auto transition-opacity duration-300">
             
-            {/* DEAL SHEETS MODAL */}
+            {/* DEAL SHEETS MODAL (READ-ONLY SHEET BROWSER) */}
             {activeModal === 'dealSheets' && (
-              <div className="relative w-full max-w-4xl h-[70vh] flex items-center justify-center animate-in fade-in zoom-in-95 duration-200">
-                {/* Close Button */}
-                <button 
-                  onClick={() => setActiveModal(null)}
-                  className="absolute -top-12 right-0 p-2 rounded-full bg-black/50 text-white hover:bg-white hover:text-black transition-colors cursor-pointer border border-white/20"
-                >
-                  <X size={24} />
-                </button>
-                
-                {/* Stacked Cards */}
-                <div className="relative w-[450px] h-[550px]">
-                  {/* Back Card */}
-                  <div className="absolute inset-0 bg-gray-200 rounded-xl shadow-2xl transform rotate-3 translate-x-4 border border-gray-300"></div>
-                  {/* Middle Card */}
-                  <div className="absolute inset-0 bg-gray-100 rounded-xl shadow-2xl transform -rotate-2 -translate-x-2 border border-gray-300"></div>
-                  {/* Front Card */}
-                  <div className="absolute inset-0 bg-white rounded-xl shadow-2xl p-6 border-t-8 border-[#d4af37] flex flex-col items-center z-10 overflow-y-auto">
-                    <div className="text-[10px] uppercase tracking-[0.3em] text-[#d4af37] font-extrabold font-mono mb-2">Modern Mint Strategy Co.</div>
-                    <h3 className="text-3xl font-black tracking-tight text-gray-900 uppercase">Deal Sheet</h3>
-                    <div className="w-16 h-1 bg-[#d4af37] mx-auto mt-4 mb-6"></div>
-                    
-                    <div className="w-full flex-1 flex flex-col gap-4 text-left">
-                      {localPlayerDeals.length > 0 ? localPlayerDeals.map((deal, idx) => (
-                        <div key={idx} className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs font-bold text-gray-500 uppercase">{deal.id}</span>
-                            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold uppercase">{deal.status}</span>
-                          </div>
-                          <p className="text-sm text-gray-800 font-medium">
-                            Offered ${deal.cash}M for {deal.equity}% equity.
-                          </p>
-                          <p className="text-[10px] text-gray-500 italic mt-1">"{deal.terms}"</p>
-                          <div className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-wider">Partner: {deal.partner}</div>
-                        </div>
-                      )) : (
-                        <div className="text-gray-400 font-mono text-sm uppercase tracking-widest text-center mt-12">
-                          No Deals Executed Yet
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="mt-6 w-full flex justify-between border-t border-gray-200 pt-4 shrink-0">
-                       <div className="text-xs font-bold text-gray-400">Total Deals: {localDealCount}</div>
-                       <div className="text-xs font-bold text-[#d4af37] cursor-pointer hover:text-[#b08d29]">View All History</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <DealSheetModal
+                onClose={() => setActiveModal(null)}
+                readOnly={true}
+                deals={localPlayerDeals}
+                username={username}
+              />
             )}
 
 
@@ -1222,6 +1188,8 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
                 onClose={() => setActiveModal(null)}
                 onSubmitDeal={submitDeal}
                 targetName={dealTarget}
+                opponents={gameState?.players?.filter(p => p.name !== username) || []}
+                username={username}
               />
             )}
 
