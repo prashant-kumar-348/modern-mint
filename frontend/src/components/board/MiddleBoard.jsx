@@ -43,30 +43,21 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
   return (
     <div className="relative w-full h-full flex flex-col pointer-events-none font-sans text-white overflow-hidden bg-[#061c17]">
       
-      {/* City Map Background Pattern */}
+      {/* City Map Background Image */}
       <div 
-        className="absolute inset-0 opacity-20 pointer-events-none mix-blend-overlay"
-        style={{
-          backgroundImage: `
-            linear-gradient(45deg, transparent 48%, #55ffb0 49%, #55ffb0 51%, transparent 52%),
-            linear-gradient(-45deg, transparent 48%, #55ffb0 49%, #55ffb0 51%, transparent 52%),
-            radial-gradient(circle at 30% 30%, transparent 60%, #1c4d3d 61%, #1c4d3d 62%, transparent 63%)
-          `,
-          backgroundSize: '150px 150px, 120px 120px, 300px 300px',
-          backgroundPosition: '0 0, 40px 60px, -50px -50px'
-        }}
-      ></div>
+        className="absolute inset-0 opacity-40 pointer-events-none bg-cover bg-center"
+        style={{ backgroundImage: `url('/board-bg.jpg')` }}
+      />
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#061c17]/60 to-[#030d0a] pointer-events-none"></div>
 
-      {/* MODERN MINT Header */}
-      <div className="absolute top-0 w-full flex justify-center pt-2">
-         <div className="text-transparent bg-clip-text bg-gradient-to-b from-[#FFF2D8] via-[#d4af37] to-[#8a6818] font-serif font-black uppercase tracking-[0.3em] text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] px-8 py-2 border-b border-x border-[#144b3c] rounded-b-xl bg-[#061c17]/80 backdrop-blur-sm z-40 pointer-events-auto">
-            MODERN MINT
-         </div>
-         {/* Subtle grid lines extending from title */}
-         <div className="absolute top-8 left-0 right-0 h-[1px] bg-[#144b3c]/50 z-30"></div>
-         <div className="absolute top-12 left-0 right-0 h-[1px] bg-[#144b3c]/30 z-30"></div>
+      {/* MODERN MINT Header Image */}
+      <div className="absolute top-0 left-0 w-full z-40 pointer-events-auto select-none">
+         <img 
+           src="/board-header.jpg" 
+           alt="Modern Mint" 
+           className="w-full h-[68px] object-cover object-center border-b border-[#144b3c]/60" 
+         />
       </div>
 
       <div className="flex-1 w-full h-full relative z-10 pt-[80px] pb-[60px] px-14 flex justify-between">
