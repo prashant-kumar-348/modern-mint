@@ -166,7 +166,11 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
 
             {/* Center Diamond with Skyline (Custom Image) */}
             <div onClick={onDeckClick} className="absolute z-20 flex items-center justify-center drop-shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-transform hover:scale-105 cursor-pointer pointer-events-auto">
-               <img src="/center-mentor-card.png" alt="Mentor Card 20K" className="w-[180px] h-[180px] object-contain" />
+               <img 
+                 src="/center-mentor-card.png" 
+                 alt="Mentor Card 20K" 
+                 className="w-[174px] h-[174px] object-contain -translate-x-[2px] -translate-y-[2px]" 
+               />
             </div>
 
             {/* Orbiting Companies */}

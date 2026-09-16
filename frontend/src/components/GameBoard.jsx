@@ -39,6 +39,8 @@ import FormalizeDealModal from './modals/FormalizeDealModal';
 import RoyaltyProposalModal from './modals/RoyaltyProposalModal';
 import RepayLoanModal from './modals/RepayLoanModal';
 import PhaseTransitionOverlay from './board/PhaseTransitionOverlay';
+import TutorialOverlay from './tutorial/TutorialOverlay';
+import { TUTORIAL_STEPS } from './tutorial/tutorialData';
 const safeSessionStorage = {
   getItem: (key) => {
     try {
@@ -130,6 +132,9 @@ const AVATAR_IMAGE_BY_ID = {
 
 function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole, avatarId }) {
   const [activeModal, setActiveModal] = useState(null); 
+  const [showTutorialPrompt, setShowTutorialPrompt] = useState(true);
+  const [isPlayingTutorial, setIsPlayingTutorial] = useState(false);
+  const [tutorialStepIndex, setTutorialStepIndex] = useState(1);
   // 'deal', 'topup', 'mentor', 'team_action', 'pe_fund', 'phaseEnd'
   const [activeTopPanel, setActiveTopPanel] = useState(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState(null);
@@ -191,8 +196,14 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
   }, [roomId]);
 
   const { gameState, notification: serverNotification, sendAction, socketId, drawnCard, clearDrawnCard } = useMultiplayer(roomId, username, role, avatarId);
-  const gamePhase = gameState?.phase || 1;
+  const rawGamePhase = gameState?.phase || 1;
   const gameRound = gameState?.round || 1;
+
+  const currentTutorialStep = isPlayingTutorial && tutorialStepIndex > 0 && tutorialStepIndex <= TUTORIAL_STEPS.length 
+    ? TUTORIAL_STEPS[tutorialStepIndex - 1] 
+    : null;
+  const tutorialVisualPhase = currentTutorialStep?.visualPhase || 1;
+  const gamePhase = isPlayingTutorial ? tutorialVisualPhase : rawGamePhase;
 
   const [isDiceRolling, setIsDiceRolling] = useState(false);
   const [pendingNotification, setPendingNotification] = useState(null);
@@ -383,7 +394,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
     gamePhase === 3 ? isMyPhase3Turn : 
     true;
 
-  const isTurnLocked = isLocked || !isCurrentPlayerTurnActive;
+  const isTurnLocked = isPlayingTutorial ? false : (isLocked || !isCurrentPlayerTurnActive);
 
   const activePlayerObj = 
     gamePhase === 1 ? activePhase1Player :
@@ -568,19 +579,47 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
                 <div className="flex flex-col gap-3">
                   <button 
                     onClick={() => setActiveTopPanel(prev => prev === 'prompts' ? null : 'prompts')}
-                    className={`w-10 h-10 border rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-lg ${
+                    title="Toggle Prompts"
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-lg select-none relative overflow-hidden group ${
                       activeTopPanel === 'prompts' 
-                        ? 'bg-gradient-to-br from-[#FFE885] via-[#d4af37] to-[#F59E0B] text-black border-transparent shadow-[0_0_15px_rgba(212,175,55,0.6)] scale-105' 
-                        : 'bg-black/60 border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/20 hover:scale-105'
+                        ? 'scale-105 shadow-[0_0_20px_rgba(255,194,64,0.8)]' 
+                        : 'hover:scale-105'
                     }`}
                   >
-                    <Search size={18} />
+                    {/* Outer Button Frame Image */}
+                    <img 
+                      src="/search-btn-frame.png" 
+                      alt="Button Frame" 
+                      className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none" 
+                    />
+                    {/* Inner Magnification Glass Icon Image */}
+                    <img 
+                      src="/search-icon-gold.png" 
+                      alt="Magnification Icon" 
+                      className="w-5 h-5 object-contain relative z-10 pointer-events-none select-none transition-transform group-hover:scale-110" 
+                    />
                   </button>
                   <button 
                     onClick={() => setIsTalking(prev => !prev)}
-                    className={`w-10 h-10 border rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-lg select-none ${isTalking ? 'bg-[#d4af37] text-black border-[#d4af37] scale-105 shadow-[0_0_15px_rgba(212,175,55,0.6)]' : 'bg-black/60 border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/20 hover:scale-105'}`}
+                    title="Toggle Voice Chat"
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-lg select-none relative overflow-hidden group ${
+                      isTalking 
+                        ? 'scale-105 shadow-[0_0_20px_rgba(255,194,64,0.8)]' 
+                        : 'hover:scale-105'
+                    }`}
                   >
-                    <Mic size={18} />
+                    {/* Outer Button Frame Image */}
+                    <img 
+                      src="/mic-btn-frame.png" 
+                      alt="Mic Button Frame" 
+                      className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none" 
+                    />
+                    {/* Inner Gold Microphone Icon Image */}
+                    <img 
+                      src="/mic-icon-gold.png" 
+                      alt="Microphone Icon" 
+                      className="w-5 h-5 object-contain relative z-10 pointer-events-none select-none transition-transform group-hover:scale-110" 
+                    />
                   </button>
                   <button 
                     onClick={() => setActiveModal('transfer')}
@@ -593,7 +632,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
               </div>
             </div>
             {/* Top-Right: Player Roster */}
-            <div className="absolute right-6 top-6 pointer-events-auto flex flex-col items-end gap-2 w-[300px] z-50">
+            <div data-tutorial="tutorial-player-roster" className="absolute right-6 top-6 pointer-events-auto flex flex-col items-end gap-2 w-fit z-50">
               {augmentedPlayers.map(player => (
                 <div key={player.id} className="w-full flex flex-col items-end gap-1">
                   <div className="flex gap-2 items-start w-full justify-end">
@@ -753,7 +792,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
             </div>
 
             {/* Center: Constrained Middle Board */}
-            <div className="w-full max-w-[1450px] h-full max-h-[760px] pointer-events-auto relative shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-[#1c4d3d] rounded-xl overflow-hidden bg-[#0a1914] scale-[0.9] origin-top">
+            <div data-tutorial="tutorial-game-board" className="w-full max-w-[1450px] h-full max-h-[760px] pointer-events-auto relative shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-[#1c4d3d] rounded-xl overflow-hidden bg-[#0a1914] scale-[0.9] origin-top">
                <MiddleBoard players={augmentedPlayers} onDeckClick={() => setActiveModal('buy_mentor')} currentRound={gameRound} />
             </div>
 
@@ -763,7 +802,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
           <div className="absolute bottom-[130px] w-full h-[240px] flex justify-center items-end gap-8 z-20">
             
             {/* Bottom-Left: Trackers */}
-            <div className="absolute left-6 bottom-4 pointer-events-auto flex flex-col gap-3">
+            <div data-tutorial="tutorial-trackers" className="absolute left-6 bottom-4 pointer-events-auto flex flex-col gap-3">
               {gamePhase === 1 ? (
                 <>
                   <div 
@@ -860,6 +899,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
             {/* Desk Element 3: Owned Mentor Cards (Inventory) */}
             {localPlayer && localPlayer.mentorCards && (
               <div 
+                data-tutorial="tutorial-card-area"
                 onClick={() => setActiveModal('mentorInventory')}
                 className="relative w-[160px] h-[160px] pointer-events-auto cursor-pointer group mb-6 ml-6"
                 title="Your Owned Mentor Cards"
@@ -983,6 +1023,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
 
             {/* Center: Action Buttons */}
             <div className="flex-1 flex justify-center items-center gap-6 border-l border-[#1c4d3d]">
+              <div data-tutorial="tutorial-action-bar" className="flex items-center gap-6 p-1">
               {gamePhase === 1 ? (
                 <>
                   <button
@@ -1026,10 +1067,11 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
                   </button>
                 </>
               )}
+              </div>
             </div>
 
             {/* Right: End Turn / Lock Button */}
-            <div className="w-[120px] md:w-[150px] lg:w-[180px] h-full flex items-center justify-center border-l border-[#1c4d3d]">
+            <div data-tutorial="tutorial-lock-button" className="w-[120px] md:w-[150px] lg:w-[180px] h-full flex items-center justify-center border-l border-[#1c4d3d]">
               <button 
                 onClick={handleLockDeal}
                 disabled={isTurnLocked}
@@ -1062,7 +1104,7 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
           {/* Sub-Bar: Financials */}
           <div className="flex w-full bg-black border-t border-[#1c4d3d] h-[55px] md:h-[60px] items-center px-4 relative">
             
-            <div className="flex items-center justify-center gap-6 md:gap-12 lg:gap-20 w-full">
+            <div data-tutorial="tutorial-player-info" className="flex items-center justify-center gap-6 md:gap-12 lg:gap-20 w-full px-4 py-1">
               
               <div className="flex items-center gap-3">
                 <span className="text-white uppercase font-bold tracking-widest text-[10px] md:text-xs text-right leading-tight">Net<br/>Worth</span>
@@ -1224,6 +1266,53 @@ function GameBoard({ roomId: propRoomId, username: propUsername, role: propRole,
         )}
 
         </div>
+
+        {/* IN-GAME TUTORIAL PROMPT MODAL */}
+        {showTutorialPrompt && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto">
+            <div className="max-w-md w-full p-8 text-center bg-black/95 border border-[#d4af37]/60 rounded-2xl shadow-[0_0_50px_rgba(212,175,55,0.3)]">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FFE885] via-[#d4af37] to-[#8a6818] flex items-center justify-center text-black mx-auto mb-4 shadow-lg text-2xl font-black">
+                ?
+              </div>
+              <h2 className="text-xl font-black uppercase tracking-wider text-white mb-2">
+                Would you like to play the tutorial?
+              </h2>
+              <p className="text-xs text-gray-300 leading-relaxed mb-6">
+                Take a quick 1-minute interactive tour of the arena board, player roster, action bar, and trackers.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowTutorialPrompt(false);
+                    setIsPlayingTutorial(true);
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-br from-[#FFE885] via-[#d4af37] to-[#8a6818] text-black font-black uppercase tracking-wider text-xs shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                >
+                  YES
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTutorialPrompt(false);
+                    setIsPlayingTutorial(false);
+                  }}
+                  className="flex-1 py-3 rounded-xl border border-white/20 hover:bg-white/10 text-white font-bold uppercase tracking-wider text-xs transition-all cursor-pointer"
+                >
+                  NO
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* IN-GAME TUTORIAL OVERLAY */}
+        {isPlayingTutorial && (
+          <TutorialOverlay
+            onClose={() => setIsPlayingTutorial(false)}
+            initialStep={1}
+            onStepChange={(stepIdx) => setTutorialStepIndex(stepIdx)}
+          />
+        )}
+
       </div>
     </GameProvider>
   );

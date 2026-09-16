@@ -43,22 +43,12 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
   return (
     <div className="relative w-full h-full flex flex-col pointer-events-none font-sans text-white overflow-hidden bg-[#061c17]">
       
-      {/* City Map Background Image */}
-      <div 
-        className="absolute inset-0 opacity-40 pointer-events-none bg-cover bg-center"
-        style={{ backgroundImage: `url('/board-bg.jpg')` }}
+      {/* Full Middle Board Background Image */}
+      <img 
+        src="/middle-board-bg.jpg" 
+        alt="Middle Board Background" 
+        className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none" 
       />
-
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#061c17]/60 to-[#030d0a] pointer-events-none"></div>
-
-      {/* MODERN MINT Header Image */}
-      <div className="absolute top-0 left-0 w-full z-40 pointer-events-auto select-none">
-         <img 
-           src="/board-header.jpg" 
-           alt="Modern Mint" 
-           className="w-full h-[68px] object-cover object-center border-b border-[#144b3c]/60" 
-         />
-      </div>
 
       <div className="flex-1 w-full h-full relative z-10 pt-[80px] pb-[60px] px-14 flex justify-between">
         
@@ -153,8 +143,15 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
             />
 
             {/* Center Diamond with Skyline (Custom Image) */}
-            <div onClick={onDeckClick} className="absolute z-20 flex items-center justify-center drop-shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-transform hover:scale-105 cursor-pointer pointer-events-auto">
-               <img src="/center-mentor-card.png" alt="Mentor Card 20K" className="w-[180px] h-[180px] object-contain" />
+            <div 
+              onClick={onDeckClick} 
+              className="absolute z-20 flex items-center justify-center drop-shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-transform hover:scale-105 cursor-pointer pointer-events-auto"
+            >
+               <img 
+                 src="/center-mentor-card.png" 
+                 alt="Mentor Card 20K" 
+                 className="w-[174px] h-[174px] object-contain -translate-x-[2px] -translate-y-[2px]" 
+               />
             </div>
 
             {/* Orbiting Companies */}
@@ -300,7 +297,7 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
       {/* =========================================
           BOTTOM ACTION BAR (1-30)
       ========================================= */}
-      <div className="absolute bottom-0 left-0 w-full h-[45px] bg-[#061c17]/90 border-t border-[#1d6b56] flex pointer-events-auto z-40 backdrop-blur-sm">
+      <div className="absolute bottom-0 left-0 w-full h-[45px] bg-transparent flex pointer-events-auto z-40">
         {[...Array(30)].map((_, i) => {
           const squareNum = i + 1;
           const playersOnSquare = players.filter(p => (p.actionCount || 0) === squareNum);
@@ -308,9 +305,8 @@ export default function MiddleBoard({ players = [], onDeckClick, currentRound = 
           return (
             <div 
               key={i}
-              className="flex-1 border-r border-[#1d6b56]/50 relative flex flex-col items-center justify-center overflow-hidden hover:bg-[#1d6b56]/40 transition-colors"
+              className="flex-1 border-r border-[#1d6b56]/20 relative flex flex-col items-center justify-center overflow-hidden hover:bg-white/10 transition-colors"
             >
-              <span className="absolute text-[10px] text-[#30a887]/50 font-bold select-none z-0">{squareNum}</span>
               
               {/* Checkers-style Tokens */}
               {playersOnSquare.length > 0 && (
